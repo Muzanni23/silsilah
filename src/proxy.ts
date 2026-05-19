@@ -9,8 +9,8 @@ export function proxy(request: NextRequest) {
   const sessionToken = request.cookies.get("better-auth.session_token")?.value;
   const isLoggedIn = !!sessionToken;
 
-  // Protected routes: member area
-  if (pathname.startsWith("/dasbor")) {
+  // Protected routes: member area, pohon silsilah, and peta lokasi
+  if (pathname.startsWith("/dasbor") || pathname.startsWith("/pohon") || pathname.startsWith("/peta")) {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/masuk?redirect=" + encodeURIComponent(pathname), request.url));
     }
@@ -43,6 +43,10 @@ export const config = {
   matcher: [
     "/dasbor/:path*",
     "/admin/:path*",
+    "/pohon/:path*",
+    "/peta/:path*",
+    "/pohon",
+    "/peta",
     "/masuk",
     "/daftar",
   ],
