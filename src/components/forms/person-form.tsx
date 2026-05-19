@@ -111,6 +111,16 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
     }
   }, [initialData?.fatherId]);
 
+  // Load existing spouse from marriage record (spouseId is passed from server)
+  useEffect(() => {
+    const spouseId = (initialData as any)?.spouseId;
+    if (spouseId) {
+      fetchPersonById(spouseId).then(spouse => {
+        if (spouse) setSelectedSpouse(spouse);
+      });
+    }
+  }, [(initialData as any)?.spouseId]);
+
   const parentResults = parentSearch
     ? persons.filter((p) => p.fullName.toLowerCase().includes(parentSearch.toLowerCase()) && p.id !== initialData?.id).slice(0, 5)
     : [];
