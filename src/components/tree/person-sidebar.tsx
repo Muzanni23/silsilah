@@ -14,6 +14,7 @@ interface Props {
   allPersons: Person[];
   allMarriages: Marriage[];
   onClose: () => void;
+  onSelectPerson?: (id: string) => void;
 }
 
 function getChildrenOf(personId: string, allPersons: Person[]): Person[] {
@@ -29,7 +30,7 @@ function getSpousesOf(personId: string, allPersons: Person[], allMarriages: Marr
   return allPersons.filter((p) => spouseIds.has(p.id));
 }
 
-export default function PersonSidebar({ person, allPersons, allMarriages, onClose }: Props) {
+export default function PersonSidebar({ person, allPersons, allMarriages, onClose, onSelectPerson }: Props) {
   const children = getChildrenOf(person.id, allPersons);
   const spouses = getSpousesOf(person.id, allPersons, allMarriages);
   const genderColor = person.gender === Gender.MALE ? "#60a5fa" : "#f472b6";
@@ -135,24 +136,30 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
         )}
 
         {/* Pasangan */}
-        {spouses.length > 0 && (
-          <InfoRow icon={Users} label="Pasangan">
+        <InfoRow icon={Users} label="Pasangan">
+          {spouses.length > 0 ? (
             <div className="flex flex-col gap-1 mt-1">
-              {spouses.map((s) => (
-                <span
-                  key={s.id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border/40 text-xs font-medium text-foreground w-fit"
-                >
+              <p className="text-xs text-muted mb-1">{spouses.length} Pasangan Terdaftar:</p>
+              <div className="flex flex-wrap gap-1">
+                {spouses.map((s) => (
                   <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: s.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
-                  />
-                  {s.fullName} {s.nickname && `(${s.nickname})`}
-                </span>
-              ))}
+                    key={s.id}
+                    onClick={() => onSelectPerson?.(s.id)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20 cursor-pointer hover:bg-gold/10 hover:border-gold/30 hover:text-gold-light transition-all"
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full mr-0.5"
+                      style={{ background: s.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
+                    />
+                    {s.fullName} {s.nickname && `(${s.nickname})`}
+                  </span>
+                ))}
+              </div>
             </div>
-          </InfoRow>
-        )}
+          ) : (
+            "Belum ada data"
+          )}
+        </InfoRow>
 
         {/* Anak */}
         <InfoRow icon={Users} label="Anak">
@@ -163,8 +170,13 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
                 {children.map((c) => (
                   <span
                     key={c.id}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20"
+                    onClick={() => onSelectPerson?.(c.id)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20 cursor-pointer hover:bg-gold/10 hover:border-gold/30 hover:text-gold-light transition-all"
                   >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full mr-0.5"
+                      style={{ background: c.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
+                    />
                     {c.fullName}
                   </span>
                 ))}

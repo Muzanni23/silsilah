@@ -387,6 +387,7 @@ function TreeContent({ initialPersons, initialMarriages }: { initialPersons: Per
           allPersons={initialPersons}
           allMarriages={initialMarriages}
           onClose={() => setSelectedId(null)}
+          onSelectPerson={setSelectedId}
         />
       )}
     </div>
