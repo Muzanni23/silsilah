@@ -121,22 +121,20 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
 
   const handleDomisiliSelect = useCallback((addr: AddressData) => {
     setDomisili(addr);
-    setDomisiliMapPos([addr.latitude, addr.longitude]);
+    if (addr.latitude !== undefined && addr.longitude !== undefined) {
+      setDomisiliMapPos([addr.latitude, addr.longitude]);
+    }
   }, []);
 
   const handleDomisiliMapClick = useCallback(async (lat: number, lng: number) => {
     setDomisili((prev) => ({ ...prev, latitude: lat, longitude: lng }));
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?` +
+        `/api/autocomplete?` +
           new URLSearchParams({
             lat: lat.toString(),
             lon: lng.toString(),
-            format: "json",
-            addressdetails: "1",
-            "accept-language": "id",
-          }),
-        { headers: { "User-Agent": "BaniAbdMutthalib-FamilyTree/1.0" } }
+          })
       );
       const data = await res.json();
       const a = data.address || {};
@@ -158,22 +156,20 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
 
   const handleMakamSelect = useCallback((addr: AddressData) => {
     setMakam(addr);
-    setMakamMapPos([addr.latitude, addr.longitude]);
+    if (addr.latitude !== undefined && addr.longitude !== undefined) {
+      setMakamMapPos([addr.latitude, addr.longitude]);
+    }
   }, []);
 
   const handleMakamMapClick = useCallback(async (lat: number, lng: number) => {
     setMakam((prev) => ({ ...prev, latitude: lat, longitude: lng }));
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?` +
+        `/api/autocomplete?` +
           new URLSearchParams({
             lat: lat.toString(),
             lon: lng.toString(),
-            format: "json",
-            addressdetails: "1",
-            "accept-language": "id",
-          }),
-        { headers: { "User-Agent": "BaniAbdMutthalib-FamilyTree/1.0" } }
+          })
       );
       const data = await res.json();
       const a = data.address || {};

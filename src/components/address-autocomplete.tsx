@@ -10,8 +10,8 @@ export interface AddressData {
   kecamatan: string;
   kabupaten: string;
   provinsi: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   displayName: string;
 }
 
@@ -88,18 +88,10 @@ export default function AddressAutocomplete({
     setLoading(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?` +
+        `/api/autocomplete?` +
           new URLSearchParams({
             q: q,
-            format: "json",
-            addressdetails: "1",
-            limit: "6",
-            countrycodes: "id", // Prioritas Indonesia
-            "accept-language": "id",
-          }),
-        {
-          headers: { "User-Agent": "BaniAbdMutthalib-FamilyTree/1.0" },
-        }
+          })
       );
       const data: NominatimResult[] = await res.json();
       setResults(data);
@@ -150,8 +142,8 @@ export default function AddressAutocomplete({
       kecamatan,
       kabupaten,
       provinsi,
-      latitude: selected?.latitude || 0,
-      longitude: selected?.longitude || 0,
+      latitude: selected?.latitude,
+      longitude: selected?.longitude,
       displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
     });
   }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
@@ -208,15 +200,11 @@ export default function AddressAutocomplete({
     async (lat: number, lng: number) => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?` +
+          `/api/autocomplete?` +
             new URLSearchParams({
               lat: lat.toString(),
               lon: lng.toString(),
-              format: "json",
-              addressdetails: "1",
-              "accept-language": "id",
-            }),
-          { headers: { "User-Agent": "BaniAbdMutthalib-FamilyTree/1.0" } }
+            })
         );
         const data: NominatimResult = await res.json();
         const addr = parseAddress(data);
