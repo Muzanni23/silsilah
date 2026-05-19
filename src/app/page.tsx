@@ -122,7 +122,7 @@ export default function Home() {
             </h2>
             <p className="text-muted max-w-xl mx-auto">
               Platform modern untuk menghubungkan keluarga besar Bani Abd.
-              Mutthalib di seluruh Indonesia dan dunia.
+              Mutthalib di seluruh dunia.
             </p>
           </div>
 
