@@ -47,7 +47,7 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
   };
 
   return (
-    <div className="w-80 border-l border-border bg-card/95 backdrop-blur-md overflow-y-auto animate-slide-in-right flex flex-col">
+    <div className="w-full sm:w-80 absolute md:relative right-0 top-0 bottom-0 z-30 h-full border-l border-border bg-card/95 backdrop-blur-md overflow-y-auto animate-slide-in-right flex flex-col shadow-2xl">
       {/* Header */}
       <div className="p-5 border-b border-border relative">
         <button
