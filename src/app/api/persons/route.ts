@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
 
     await logActivity(authResult.user.id, "Menambah data anggota", person.fullName);
 
+
     if (body.spouseId) {
       const isHusband = person.gender === "MALE";
       const husbandId = isHusband ? person.id : body.spouseId;
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
           status: "MARRIED",
         },
       });
+
     }
 
     return jsonResponse(person, 201);

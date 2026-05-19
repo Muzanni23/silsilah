@@ -181,6 +181,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
     }
 
     // If spouseId is provided during update, create a Marriage record if it doesn't exist
+
     if (spouseId) {
       // Check existing marriage
       const existing = await prisma.marriage.findFirst({
@@ -191,6 +192,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
           ]
         }
       });
+
       if (!existing) {
         const isMale = person.gender === "MALE";
         await prisma.marriage.create({
@@ -200,6 +202,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
             status: "MARRIED",
           }
         });
+
       }
     }
 
