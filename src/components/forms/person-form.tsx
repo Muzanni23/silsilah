@@ -90,6 +90,10 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
   const [selectedSpouse, setSelectedSpouse] = useState<Person | null>(null);
   const [showSpouseSearch, setShowSpouseSearch] = useState(false);
   
+  const [isAlive, setIsAlive] = useState<boolean>(
+    initialData?.isAlive !== undefined ? initialData.isAlive : true
+  );
+  
   const [errorMsg, setErrorMsg] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -204,7 +208,7 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
       fullName: form.get("fullName") as string,
       nickname: (form.get("nickname") as string) || undefined,
       gender: form.get("gender") as Gender,
-      isAlive: form.get("isAlive") === "true",
+      isAlive: isAlive,
       birthDate: (form.get("birthDate") as string) || undefined,
       birthPlace: (form.get("birthPlace") as string) || undefined,
       phone: (form.get("phone") as string) || undefined,
@@ -220,15 +224,15 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
       latitude: domisili.latitude || undefined,
       longitude: domisili.longitude || undefined,
       
-      deathDate: (form.get("deathDate") as string) || undefined,
-      graveAddress: makam.jalan || undefined,
-      graveKelurahan: makam.kelurahan || undefined,
-      graveKecamatan: makam.kecamatan || undefined,
-      graveKabupaten: makam.kabupaten || undefined,
-      graveProvince: makam.provinsi || undefined,
-      graveCity: makam.kabupaten || undefined,
-      graveLatitude: makam.latitude || undefined,
-      graveLongitude: makam.longitude || undefined,
+      deathDate: !isAlive ? ((form.get("deathDate") as string) || undefined) : undefined,
+      graveAddress: !isAlive ? (makam.jalan || undefined) : undefined,
+      graveKelurahan: !isAlive ? (makam.kelurahan || undefined) : undefined,
+      graveKecamatan: !isAlive ? (makam.kecamatan || undefined) : undefined,
+      graveKabupaten: !isAlive ? (makam.kabupaten || undefined) : undefined,
+      graveProvince: !isAlive ? (makam.provinsi || undefined) : undefined,
+      graveCity: !isAlive ? (makam.kabupaten || undefined) : undefined,
+      graveLatitude: !isAlive ? (makam.latitude || undefined) : undefined,
+      graveLongitude: !isAlive ? (makam.longitude || undefined) : undefined,
     };
 
     await onSubmit(data);
@@ -258,7 +262,13 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
             </div>
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">Status *</label>
-              <select name="isAlive" defaultValue={initialData?.isAlive !== undefined ? (initialData.isAlive ? "true" : "false") : ""} required className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-gold/50">
+              <select
+                name="isAlive"
+                value={isAlive ? "true" : "false"}
+                onChange={(e) => setIsAlive(e.target.value === "true")}
+                required
+                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-gold/50"
+              >
                 <option value="true">Masih Hidup</option>
                 <option value="false">Wafat</option>
               </select>
@@ -372,34 +382,36 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
           </button>
         </Section>
 
-        <Section title="Data Wafat (jika sudah wafat)">
-          <Field label="Tanggal Wafat" name="deathDate" type="date" defaultValue={initialData?.deathDate?.split("T")[0] || ""} />
+        {!isAlive && (
+          <Section title="Data Wafat (jika sudah wafat)">
+            <Field label="Tanggal Wafat" name="deathDate" type="date" defaultValue={initialData?.deathDate?.split("T")[0] || ""} />
 
-          <AddressAutocomplete
-            label="Cari Lokasi Makam"
-            onSelect={handleMakamSelect}
-            initialAddress={makam as AddressData}
-          />
+            <AddressAutocomplete
+              label="Cari Lokasi Makam"
+              onSelect={handleMakamSelect}
+              initialAddress={makam as AddressData}
+            />
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="block text-[11px] font-medium text-muted mb-1">Lat Makam</label>
-              <input type="text" readOnly value={makam.latitude?.toFixed(6) || ""}
-                placeholder="Auto dari alamat/peta"
-                className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Lat Makam</label>
+                <input type="text" readOnly value={makam.latitude?.toFixed(6) || ""}
+                  placeholder="Auto dari alamat/peta"
+                  className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Lng Makam</label>
+                <input type="text" readOnly value={makam.longitude?.toFixed(6) || ""}
+                  placeholder="Auto dari alamat/peta"
+                  className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-medium text-muted mb-1">Lng Makam</label>
-              <input type="text" readOnly value={makam.longitude?.toFixed(6) || ""}
-                placeholder="Auto dari alamat/peta"
-                className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
-            </div>
-          </div>
-          <button type="button" onClick={() => setShowMakamMap(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-border hover:bg-white/5 hover:border-gold/30 transition-all mt-1">
-            <MapPin size={13} className="text-gold-light" /> Pilih / Koreksi Titik Makam di Peta
-          </button>
-        </Section>
+            <button type="button" onClick={() => setShowMakamMap(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-border hover:bg-white/5 hover:border-gold/30 transition-all mt-1">
+              <MapPin size={13} className="text-gold-light" /> Pilih / Koreksi Titik Makam di Peta
+            </button>
+          </Section>
+        )}
 
         <button type="submit" disabled={loading}
           className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-gold to-gold-dark text-background hover:brightness-110 transition-all disabled:opacity-60">

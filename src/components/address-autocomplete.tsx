@@ -156,23 +156,38 @@ export default function AddressAutocomplete({
     });
   }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
 
+  const initJalan = initialAddress?.jalan;
+  const initKelurahan = initialAddress?.kelurahan;
+  const initKecamatan = initialAddress?.kecamatan;
+  const initKabupaten = initialAddress?.kabupaten;
+  const initProvinsi = initialAddress?.provinsi;
+  const initLat = initialAddress?.latitude;
+  const initLng = initialAddress?.longitude;
+
   // Sync state ketika initialAddress berubah dari parent (misal dari Map Picker)
   useEffect(() => {
-    if (initialAddress) {
-      if (initialAddress.jalan !== undefined && initialAddress.jalan !== jalan) setJalan(initialAddress.jalan);
-      if (initialAddress.kelurahan !== undefined && initialAddress.kelurahan !== kelurahan) setKelurahan(initialAddress.kelurahan);
-      if (initialAddress.kecamatan !== undefined && initialAddress.kecamatan !== kecamatan) setKecamatan(initialAddress.kecamatan);
-      if (initialAddress.kabupaten !== undefined && initialAddress.kabupaten !== kabupaten) setKabupaten(initialAddress.kabupaten);
-      if (initialAddress.provinsi !== undefined && initialAddress.provinsi !== provinsi) setProvinsi(initialAddress.provinsi);
-      if (
-        initialAddress.latitude !== undefined &&
-        initialAddress.longitude !== undefined &&
-        (initialAddress.latitude !== selected?.latitude || initialAddress.longitude !== selected?.longitude)
-      ) {
-        setSelected(initialAddress as AddressData);
-      }
+    if (initJalan !== undefined && initJalan !== jalan) setJalan(initJalan);
+    if (initKelurahan !== undefined && initKelurahan !== kelurahan) setKelurahan(initKelurahan);
+    if (initKecamatan !== undefined && initKecamatan !== kecamatan) setKecamatan(initKecamatan);
+    if (initKabupaten !== undefined && initKabupaten !== kabupaten) setKabupaten(initKabupaten);
+    if (initProvinsi !== undefined && initProvinsi !== provinsi) setProvinsi(initProvinsi);
+    if (
+      initLat !== undefined &&
+      initLng !== undefined &&
+      (initLat !== selected?.latitude || initLng !== selected?.longitude)
+    ) {
+      setSelected({
+        jalan: initJalan || "",
+        kelurahan: initKelurahan || "",
+        kecamatan: initKecamatan || "",
+        kabupaten: initKabupaten || "",
+        provinsi: initProvinsi || "",
+        latitude: initLat,
+        longitude: initLng,
+        displayName: initialAddress?.displayName || "",
+      });
     }
-  }, [initialAddress, jalan, kelurahan, kecamatan, kabupaten, provinsi, selected]);
+  }, [initJalan, initKelurahan, initKecamatan, initKabupaten, initProvinsi, initLat, initLng]);
 
   // Emit perubahan manual
   const emitManualChange = useCallback(() => {
