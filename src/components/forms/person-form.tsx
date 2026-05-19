@@ -211,14 +211,14 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
       fatherId: selectedParent?.id || undefined,
       spouseId: selectedSpouse?.id || undefined,
       
-      address: domisili.jalan || undefined,
-      kelurahan: domisili.kelurahan || undefined,
-      kecamatan: domisili.kecamatan || undefined,
-      kabupaten: domisili.kabupaten || undefined,
-      province: domisili.provinsi || undefined,
-      city: domisili.kabupaten || undefined,
-      latitude: domisili.latitude || undefined,
-      longitude: domisili.longitude || undefined,
+      address: isAlive ? (domisili.jalan || undefined) : undefined,
+      kelurahan: isAlive ? (domisili.kelurahan || undefined) : undefined,
+      kecamatan: isAlive ? (domisili.kecamatan || undefined) : undefined,
+      kabupaten: isAlive ? (domisili.kabupaten || undefined) : undefined,
+      province: isAlive ? (domisili.provinsi || undefined) : undefined,
+      city: isAlive ? (domisili.kabupaten || undefined) : undefined,
+      latitude: isAlive ? (domisili.latitude || undefined) : undefined,
+      longitude: isAlive ? (domisili.longitude || undefined) : undefined,
       
       deathDate: !isAlive ? ((form.get("deathDate") as string) || undefined) : undefined,
       graveAddress: !isAlive ? (makam.jalan || undefined) : undefined,
@@ -351,32 +351,34 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
           </div>
         </Section>
 
-        <Section title="Domisili">
-          <AddressAutocomplete
-            label="Cari Alamat Domisili"
-            onSelect={handleDomisiliSelect}
-            initialAddress={domisili as AddressData}
-          />
+        {isAlive && (
+          <Section title="Domisili">
+            <AddressAutocomplete
+              label="Cari Alamat Domisili"
+              onSelect={handleDomisiliSelect}
+              initialAddress={domisili as AddressData}
+            />
 
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="block text-[11px] font-medium text-muted mb-1">Latitude</label>
-              <input type="text" readOnly value={domisili.latitude?.toFixed(6) || ""}
-                placeholder="Auto dari alamat/peta"
-                className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Latitude</label>
+                <input type="text" readOnly value={domisili.latitude?.toFixed(6) || ""}
+                  placeholder="Auto dari alamat/peta"
+                  className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-muted mb-1">Longitude</label>
+                <input type="text" readOnly value={domisili.longitude?.toFixed(6) || ""}
+                  placeholder="Auto dari alamat/peta"
+                  className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-medium text-muted mb-1">Longitude</label>
-              <input type="text" readOnly value={domisili.longitude?.toFixed(6) || ""}
-                placeholder="Auto dari alamat/peta"
-                className="w-full px-3.5 py-2 rounded-lg bg-background/50 border border-border text-sm text-foreground placeholder:text-muted-foreground cursor-default" />
-            </div>
-          </div>
-          <button type="button" onClick={() => setShowDomisiliMap(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-border hover:bg-white/5 hover:border-gold/30 transition-all mt-1">
-            <MapPin size={13} className="text-gold-light" /> Pilih / Koreksi Titik di Peta
-          </button>
-        </Section>
+            <button type="button" onClick={() => setShowDomisiliMap(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium border border-border hover:bg-white/5 hover:border-gold/30 transition-all mt-1">
+              <MapPin size={13} className="text-gold-light" /> Pilih / Koreksi Titik di Peta
+            </button>
+          </Section>
+        )}
 
         {!isAlive && (
           <Section title="Data Wafat (jika sudah wafat)">
