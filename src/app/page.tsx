@@ -11,6 +11,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
+import { getSession } from "@/lib/api-helpers";
 
 const stats = [
   { label: "Anggota Keluarga", value: "500+", icon: Users },
@@ -42,7 +43,9 @@ const features = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -146,27 +149,29 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="px-4 py-16">
-        <div className="max-w-3xl mx-auto text-center glass rounded-3xl p-10 border-gold/10 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-gold/3 pointer-events-none" />
-          <div className="relative z-10">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-              Bergabung Bersama Kami
-            </h2>
-            <p className="text-muted mb-6 max-w-lg mx-auto">
-              Daftarkan diri Anda untuk melengkapi data keluarga, menambah
-              anggota baru, dan menjaga silsilah keluarga tetap terkini.
-            </p>
-            <Link
-              href="/daftar"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-gold to-gold-dark text-background hover:brightness-110 transition-all"
-            >
-              <UserPlus size={18} />
-              Daftar Sekarang
-            </Link>
+      {!session && (
+        <section className="px-4 py-16">
+          <div className="max-w-3xl mx-auto text-center glass rounded-3xl p-10 border-gold/10 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-transparent to-gold/3 pointer-events-none" />
+            <div className="relative z-10">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+                Bergabung Bersama Kami
+              </h2>
+              <p className="text-muted mb-6 max-w-lg mx-auto">
+                Daftarkan diri Anda untuk melengkapi data keluarga, menambah
+                anggota baru, dan menjaga silsilah keluarga tetap terkini.
+              </p>
+              <Link
+                href="/daftar"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-gold to-gold-dark text-background hover:brightness-110 transition-all"
+              >
+                <UserPlus size={18} />
+                Daftar Sekarang
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-border/50 px-4 py-8 mt-auto">
