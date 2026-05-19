@@ -56,11 +56,6 @@ export default function Home() {
         </div>
 
         <div className="relative z-10 max-w-3xl mx-auto text-center animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-gold/20 bg-gold-muted text-gold-light text-xs font-medium">
-            <Heart size={12} className="fill-current" />
-            Sido Gedongbatu · Sangkapura · Bawean
-          </div>
-
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6">
             Silsilah Keluarga{" "}
             <span className="text-gradient-gold">
