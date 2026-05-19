@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth, jsonResponse, errorResponse, logActivity } from "@/lib/api-helpers";
 import { NextRequest } from "next/server";
+import { sendUserStatusNotification } from "@/lib/email-service";
 
 // PUT /api/users/[id] — Update user status/role (admin only)
 export async function PUT(req: NextRequest, ctx: RouteContext<"/api/users/[id]">) {
@@ -58,6 +59,18 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/users/[id]">
     });
 
     await logActivity(authResult.user.id, actionDesc, targetUser.name);
+
+    // Kirim Notifikasi Email Asinkron (Graceful Fallback)
+    if (["approve", "reject", "suspend", "activate"].includes(action)) {
+      sendUserStatusNotification({
+        to: updated.email,
+        userName: updated.name,
+        status: updated.status as "ACTIVE" | "REJECTED" | "SUSPENDED",
+        adminNote: body.adminNote,
+      }).catch((err) => {
+        console.error("Gagal mengirim email notifikasi status user:", err);
+      });
+    }
 
     return jsonResponse({
       id: updated.id,

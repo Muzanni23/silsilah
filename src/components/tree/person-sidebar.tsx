@@ -52,7 +52,8 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
       <div className="p-5 border-b border-border relative">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-white/5 text-muted hover:text-foreground transition-colors"
+          className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-white/5 text-muted hover:text-foreground transition-colors flex items-center gap-1 text-[10px]"
+          title="Tutup"
         >
           <X size={16} />
         </button>
@@ -118,25 +119,60 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
           </InfoRow>
         )}
 
-        {/* Domisili */}
-        {person.city && (
+        {/* Domisili (Lengkap) */}
+        {(person.address || person.kelurahan || person.kecamatan || person.kabupaten || person.province || person.city) && (
           <InfoRow icon={MapPin} label="Domisili">
-            {[person.city, person.province].filter(Boolean).join(", ")}
+            {[
+              person.address,
+              person.kelurahan ? `Kel. ${person.kelurahan}` : null,
+              person.kecamatan ? `Kec. ${person.kecamatan}` : null,
+              person.kabupaten || person.city,
+              person.province
+            ]
+              .filter(Boolean)
+              .join(", ")}
           </InfoRow>
         )}
 
         {/* Pasangan */}
         {spouses.length > 0 && (
           <InfoRow icon={Users} label="Pasangan">
-            {spouses.map((s) => s.fullName).join(", ")}
+            <div className="flex flex-col gap-1 mt-1">
+              {spouses.map((s) => (
+                <span
+                  key={s.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border/40 text-xs font-medium text-foreground w-fit"
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: s.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
+                  />
+                  {s.fullName} {s.nickname && `(${s.nickname})`}
+                </span>
+              ))}
+            </div>
           </InfoRow>
         )}
 
         {/* Anak */}
         <InfoRow icon={Users} label="Anak">
-          {children.length > 0
-            ? `${children.length} orang (${children.map((c) => c.fullName).join(", ")})`
-            : "Belum ada data"}
+          {children.length > 0 ? (
+            <div className="flex flex-col gap-1 mt-1">
+              <p className="text-xs text-muted mb-1">{children.length} Anak Terdaftar:</p>
+              <div className="flex flex-wrap gap-1">
+                {children.map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20"
+                  >
+                    {c.fullName}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            "Belum ada data"
+          )}
         </InfoRow>
       </div>
 
@@ -160,6 +196,7 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
             </button>
           </div>
         )}
+        
         {person.isAlive && person.latitude && person.longitude && (
           <Link
             href={`/peta?lat=${person.latitude}&lng=${person.longitude}&name=${encodeURIComponent(person.fullName)}`}
@@ -191,6 +228,15 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
             Lihat Lokasi Makam
           </Link>
         )}
+
+        {/* Prominent Close Button at bottom */}
+        <button
+          onClick={onClose}
+          className="flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-border text-muted hover:text-foreground hover:bg-white/5 transition-all mt-2"
+        >
+          <X size={15} />
+          Tutup Detail
+        </button>
       </div>
     </div>
   );
@@ -200,9 +246,9 @@ function InfoRow({ icon: Icon, label, children }: { icon: React.ElementType; lab
   return (
     <div className="flex gap-3">
       <Icon size={15} className="text-muted shrink-0 mt-0.5" />
-      <div>
+      <div className="min-w-0 flex-1">
         <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-sm">{children}</p>
+        <div className="text-sm text-foreground break-words">{children}</div>
       </div>
     </div>
   );

@@ -142,18 +142,50 @@ export default function AddressAutocomplete({
     setResults([]);
   };
 
+  // Sync manual inputs to parent state immediately when any input field changes
+  useEffect(() => {
+    onSelect({
+      jalan,
+      kelurahan,
+      kecamatan,
+      kabupaten,
+      provinsi,
+      latitude: selected?.latitude || 0,
+      longitude: selected?.longitude || 0,
+      displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
+    });
+  }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
+
+  // Sync state ketika initialAddress berubah dari parent (misal dari Map Picker)
+  useEffect(() => {
+    if (initialAddress) {
+      if (initialAddress.jalan !== undefined && initialAddress.jalan !== jalan) setJalan(initialAddress.jalan);
+      if (initialAddress.kelurahan !== undefined && initialAddress.kelurahan !== kelurahan) setKelurahan(initialAddress.kelurahan);
+      if (initialAddress.kecamatan !== undefined && initialAddress.kecamatan !== kecamatan) setKecamatan(initialAddress.kecamatan);
+      if (initialAddress.kabupaten !== undefined && initialAddress.kabupaten !== kabupaten) setKabupaten(initialAddress.kabupaten);
+      if (initialAddress.provinsi !== undefined && initialAddress.provinsi !== provinsi) setProvinsi(initialAddress.provinsi);
+      if (
+        initialAddress.latitude !== undefined &&
+        initialAddress.longitude !== undefined &&
+        (initialAddress.latitude !== selected?.latitude || initialAddress.longitude !== selected?.longitude)
+      ) {
+        setSelected(initialAddress as AddressData);
+      }
+    }
+  }, [initialAddress, jalan, kelurahan, kecamatan, kabupaten, provinsi, selected]);
+
   // Emit perubahan manual
   const emitManualChange = useCallback(() => {
-    if (selected) {
-      onSelect({
-        ...selected,
-        jalan,
-        kelurahan,
-        kecamatan,
-        kabupaten,
-        provinsi,
-      });
-    }
+    onSelect({
+      jalan,
+      kelurahan,
+      kecamatan,
+      kabupaten,
+      provinsi,
+      latitude: selected?.latitude || 0,
+      longitude: selected?.longitude || 0,
+      displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
+    });
   }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
 
   // Update koordinat dari luar (coordinate picker)

@@ -46,51 +46,149 @@ function buildTree(persons: Person[], marriages: Marriage[]) {
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const genRows: Record<number, Person[]> = {};
 
+  // Pemetaan objek silsilah untuk akses cepat
+  const personsMap = new Map<string, Person>();
+  linked.forEach((p) => personsMap.set(p.id, p));
+
+  const childrenMap = new Map<string, Person[]>();
   linked.forEach((p) => {
-    const gen = p.generationNumber || 1;
-    if (!genRows[gen]) genRows[gen] = [];
-    genRows[gen].push(p);
+    if (p.fatherId) {
+      if (!childrenMap.has(p.fatherId)) {
+        childrenMap.set(p.fatherId, []);
+      }
+      childrenMap.get(p.fatherId)!.push(p);
+    }
   });
 
+  // Cari leluhur/root utama (yang tidak memiliki ayah terdaftar di data)
+  const roots = linked.filter((p) => !p.fatherId || !personsMap.has(p.fatherId));
+
+  // Urutkan roots berdasarkan nomor generasi terkecil, lalu nama
+  roots.sort((a, b) => {
+    const genA = a.generationNumber || 1;
+    const genB = b.generationNumber || 1;
+    if (genA !== genB) return genA - genB;
+    return a.fullName.localeCompare(b.fullName);
+  });
+
+  const positions = new Map<string, { x: number; y: number }>();
+  let cursorX = 0;
   const NODE_W = 180;
   const NODE_H = 70;
-  const GAP_X = 40;
-  const GAP_Y = 140;
+  const GAP_X = 50; // Spasi horizontal antar node sibling
+  const GAP_Y = 120; // Spasi vertikal antar generasi
 
-  Object.entries(genRows).forEach(([genStr, people]) => {
-    const gen = parseInt(genStr);
-    const totalWidth = people.length * NODE_W + (people.length - 1) * GAP_X;
-    const startX = -totalWidth / 2;
+  function layoutNode(nodeId: string, depth: number): number {
+    const children = childrenMap.get(nodeId) || [];
+    const person = personsMap.get(nodeId);
+    
+    // Gunakan generationNumber yang sah jika tersedia, atau hitung dari kedalaman
+    const gen = person?.generationNumber || (depth + 1);
+    const y = (gen - 1) * (NODE_H + GAP_Y);
 
-    people.forEach((person, idx) => {
-      const x = startX + idx * (NODE_W + GAP_X);
-      const y = (gen - 1) * (NODE_H + GAP_Y);
+    if (children.length === 0) {
+      // Leaf node: letakkan di cursorX saat ini, lalu geser cursorX ke kanan
+      const x = cursorX;
+      cursorX += NODE_W + GAP_X;
+      positions.set(nodeId, { x, y });
+      return x;
+    }
 
-      nodes.push({
-        id: person.id,
-        type: "person",
-        position: { x, y },
-        data: {
-          person,
-          spouses: getSpousesOf(person.id, persons, marriages),
-          childrenCount: getChildrenOf(person.id, persons).length,
-          genColor: GEN_COLORS[gen] || "#888",
-        },
-      });
-
-      if (person.fatherId) {
-        edges.push({
-          id: `e-${person.fatherId}-${person.id}`,
-          source: person.fatherId,
-          target: person.id,
-          type: "smoothstep",
-          style: { stroke: "#3a3a4a", strokeWidth: 2 },
-          animated: false,
-        });
-      }
+    // Internal node: posisikan seluruh anak terlebih dahulu secara rekursif
+    const childXPositions: number[] = [];
+    children.forEach((child) => {
+      const childX = layoutNode(child.id, depth + 1);
+      childXPositions.push(childX);
     });
+
+    // Posisikan parent tepat di tengah-tengah rata-rata koordinat anak-anaknya
+    const minChildX = Math.min(...childXPositions);
+    const maxChildX = Math.max(...childXPositions);
+    let x = (minChildX + maxChildX) / 2;
+
+    // Jika posisi tengah parent berada di sebelah kiri batas cursorX saat ini,
+    // maka geser parent beserta seluruh sub-pohon keturunannya ke kanan.
+    if (x < cursorX) {
+      const shift = cursorX - x;
+      shiftSubtree(nodeId, shift);
+      x = cursorX;
+    }
+
+    // Perbarui cursorX umum agar node berikutnya tidak bertabrakan
+    cursorX = Math.max(cursorX, x + NODE_W + GAP_X);
+    positions.set(nodeId, { x, y });
+    return x;
+  }
+
+  function shiftSubtree(nodeId: string, shift: number) {
+    const pos = positions.get(nodeId);
+    if (pos) {
+      pos.x += shift;
+    }
+    const children = childrenMap.get(nodeId) || [];
+    children.forEach((child) => {
+      shiftSubtree(child.id, shift);
+    });
+  }
+
+  // Jalankan penyusunan tata letak pohon untuk setiap root
+  roots.forEach((root) => {
+    layoutNode(root.id, 0);
+  });
+
+  // Untuk node yang terputus (jika ada data abnormal), letakkan di ujung kanan agar aman
+  linked.forEach((person) => {
+    if (!positions.has(person.id)) {
+      const gen = person.generationNumber || 1;
+      const y = (gen - 1) * (NODE_H + GAP_Y);
+      const x = cursorX;
+      cursorX += NODE_W + GAP_X;
+      positions.set(person.id, { x, y });
+    }
+  });
+
+  // Tengahkan seluruh pohon secara horizontal di sekitar koordinat x = 0
+  let minX = Infinity;
+  let maxX = -Infinity;
+  positions.forEach((pos) => {
+    if (pos.x < minX) minX = pos.x;
+    if (pos.x > maxX) maxX = pos.x;
+  });
+  const totalTreeWidth = maxX - minX;
+  const offsetX = minX + totalTreeWidth / 2;
+
+  positions.forEach((pos) => {
+    pos.x -= offsetX;
+  });
+
+  // Konstruksi node dan edge final untuk React Flow
+  linked.forEach((person) => {
+    const pos = positions.get(person.id) || { x: 0, y: 0 };
+    const gen = person.generationNumber || 1;
+
+    nodes.push({
+      id: person.id,
+      type: "person",
+      position: pos,
+      data: {
+        person,
+        spouses: getSpousesOf(person.id, persons, marriages),
+        childrenCount: getChildrenOf(person.id, persons).length,
+        genColor: GEN_COLORS[gen] || "#888",
+      },
+    });
+
+    if (person.fatherId) {
+      edges.push({
+        id: `e-${person.fatherId}-${person.id}`,
+        source: person.fatherId,
+        target: person.id,
+        type: "smoothstep",
+        style: { stroke: GEN_COLORS[gen] || "#3a3a4a", strokeWidth: 2 },
+        animated: false,
+      });
+    }
   });
 
   return { nodes, edges };

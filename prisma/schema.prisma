@@ -1,6 +1,3 @@
-// Prisma Schema — Silsilah Bani Abd. Mutthalib
-// Sesuai PRD v1.1.0 Section 3
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,32 +6,27 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================================
-// AUTH TABLES (Better Auth)
-// ============================================================
-
 model user {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  phone         String?
-  fatherName    String?
-  motherName    String?
-  linkedPersonId String?    @unique
-  role          Role      @default(MEMBER)
-  status        UserStatus @default(PENDING)
-  approvedBy    String?
-  approvedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  sessions      session[]
-  accounts      account[]
-  submissions   PersonSubmission[] @relation("SubmittedBy")
-  reviews       PersonSubmission[] @relation("ReviewedBy")
-  activityLogs  ActivityLog[]
+  id             String             @id @default(cuid())
+  name           String
+  email          String             @unique
+  emailVerified  Boolean            @default(false)
+  image          String?
+  phone          String?
+  fatherName     String?
+  motherName     String?
+  role           Role               @default(MEMBER)
+  status         UserStatus         @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  linkedPersonId String?            @unique
+  accounts       account[]
+  activityLogs   ActivityLog[]
+  reviews        PersonSubmission[] @relation("ReviewedBy")
+  submissions    PersonSubmission[] @relation("SubmittedBy")
+  sessions       session[]
 
   @@map("users")
 }
@@ -48,8 +40,7 @@ model session {
   ipAddress String?
   userAgent String?
   userId    String
-
-  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
@@ -68,8 +59,7 @@ model account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-
-  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("accounts")
 }
@@ -85,10 +75,6 @@ model verification {
   @@map("verifications")
 }
 
-// ============================================================
-// DOMAIN TABLES
-// ============================================================
-
 model Person {
   id                 String     @id @default(cuid())
   fullName           String
@@ -97,65 +83,44 @@ model Person {
   isAlive            Boolean    @default(true)
   generationNumber   Int?
   familyBranch       String?
-
-  // Relasi keluarga
   fatherId           String?
   motherId           String?
-  father             Person?    @relation("FatherChildren", fields: [fatherId], references: [id], onDelete: Cascade)
-  mother             Person?    @relation("MotherChildren", fields: [motherId], references: [id], onDelete: Cascade)
-  childrenAsFather   Person[]   @relation("FatherChildren")
-  childrenAsMother   Person[]   @relation("MotherChildren")
-
-  // Fallback nama (jika parent belum ada di DB)
   fatherNameFallback String?
   motherNameFallback String?
-
-  // Data kelahiran
   birthDate          String?
   birthPlace         String?
-
-  // Domisili (struktur alamat Indonesia)
-  address            String?    // Jalan / alamat detail (Jl. Merdeka No. 10, RT 01/RW 05)
-  kelurahan          String?    // Kelurahan / Desa
-  kecamatan          String?    // Kecamatan
-  kabupaten          String?    // Kabupaten / Kota
-  province           String?    // Provinsi
+  address            String?
+  kelurahan          String?
+  kecamatan          String?
+  kabupaten          String?
+  province           String?
   country            String?    @default("Indonesia")
-  latitude           Float?     // Koordinat GPS
-  longitude          Float?     // Koordinat GPS
+  latitude           Float?
+  longitude          Float?
   phone              String?
-
-  // Data wafat
   deathDate          String?
   deathPlace         String?
-
-  // Data makam (struktur alamat sama)
-  graveAddress       String?    // Jalan / alamat makam
-  graveKelurahan     String?    // Kelurahan makam
-  graveKecamatan     String?    // Kecamatan makam
-  graveKabupaten     String?    // Kabupaten / Kota makam
-  graveProvince      String?    // Provinsi makam
-  graveLatitude      Float?     // Koordinat GPS makam
-  graveLongitude     Float?     // Koordinat GPS makam
+  graveAddress       String?
+  graveKelurahan     String?
+  graveKecamatan     String?
+  graveKabupaten     String?
+  graveProvince      String?
+  graveLatitude      Float?
+  graveLongitude     Float?
   graveNotes         String?
-
-  // Foto
   photoUrl           String?
-
-  // Status
   linkStatus         LinkStatus @default(UNLINKED)
   status             DataStatus @default(PENDING)
-
-  // Pernikahan
-  marriagesAsHusband Marriage[] @relation("Husband")
-  marriagesAsWife    Marriage[] @relation("Wife")
-
-  // Adopsi
-  adoptionsAsChild   Adoption[] @relation("AdoptedChild")
-  adoptionsAsParent  Adoption[] @relation("AdoptiveParent")
-
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
+  adoptionsAsParent  Adoption[] @relation("AdoptiveParent")
+  adoptionsAsChild   Adoption[] @relation("AdoptedChild")
+  marriagesAsHusband Marriage[] @relation("Husband")
+  marriagesAsWife    Marriage[] @relation("Wife")
+  father             Person?    @relation("FatherChildren", fields: [fatherId], references: [id], onDelete: Cascade)
+  childrenAsFather   Person[]   @relation("FatherChildren")
+  mother             Person?    @relation("MotherChildren", fields: [motherId], references: [id], onDelete: Cascade)
+  childrenAsMother   Person[]   @relation("MotherChildren")
 
   @@index([fatherId])
   @@index([motherId])
@@ -168,14 +133,14 @@ model Marriage {
   id            String         @id @default(cuid())
   husbandId     String
   wifeId        String
-  husband       Person         @relation("Husband", fields: [husbandId], references: [id], onDelete: Cascade)
-  wife          Person         @relation("Wife", fields: [wifeId], references: [id], onDelete: Cascade)
   marriageDate  String?
   marriagePlace String?
   divorceDate   String?
   status        MarriageStatus @default(MARRIED)
   marriageOrder Int            @default(1)
   createdAt     DateTime       @default(now())
+  husband       Person         @relation("Husband", fields: [husbandId], references: [id], onDelete: Cascade)
+  wife          Person         @relation("Wife", fields: [wifeId], references: [id], onDelete: Cascade)
 
   @@index([husbandId])
   @@index([wifeId])
@@ -183,14 +148,14 @@ model Marriage {
 }
 
 model Adoption {
-  id              String   @id @default(cuid())
-  childId         String
+  id               String   @id @default(cuid())
+  childId          String
   adoptiveParentId String
-  child           Person   @relation("AdoptedChild", fields: [childId], references: [id], onDelete: Cascade)
-  adoptiveParent  Person   @relation("AdoptiveParent", fields: [adoptiveParentId], references: [id], onDelete: Cascade)
-  adoptionDate    String?
-  notes           String?
-  createdAt       DateTime @default(now())
+  adoptionDate     String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  adoptiveParent   Person   @relation("AdoptiveParent", fields: [adoptiveParentId], references: [id], onDelete: Cascade)
+  child            Person   @relation("AdoptedChild", fields: [childId], references: [id], onDelete: Cascade)
 
   @@map("adoptions")
 }
@@ -198,7 +163,6 @@ model Adoption {
 model PersonSubmission {
   id               String     @id @default(cuid())
   submittedById    String
-  submittedBy      user       @relation("SubmittedBy", fields: [submittedById], references: [id])
   personData       Json
   changeType       ChangeType
   targetPersonId   String?
@@ -206,9 +170,10 @@ model PersonSubmission {
   status           DataStatus @default(PENDING)
   adminNote        String?
   reviewedById     String?
-  reviewedBy       user?      @relation("ReviewedBy", fields: [reviewedById], references: [id])
   reviewedAt       DateTime?
   createdAt        DateTime   @default(now())
+  reviewedBy       user?      @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  submittedBy      user       @relation("SubmittedBy", fields: [submittedById], references: [id])
 
   @@index([submittedById])
   @@index([status])
@@ -218,19 +183,15 @@ model PersonSubmission {
 model ActivityLog {
   id        String   @id @default(cuid())
   userId    String
-  user      user     @relation(fields: [userId], references: [id])
   action    String
   target    String?
   metadata  Json?
   createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@map("activity_logs")
 }
-
-// ============================================================
-// ENUMS
-// ============================================================
 
 enum Gender {
   MALE

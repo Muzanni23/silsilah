@@ -66,14 +66,34 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
+    // Auto-detect generation dan inherit familyBranch dari ayah
+    let generationNumber = body.generationNumber;
+    let familyBranch = body.familyBranch;
+
+    if (body.fatherId) {
+      const father = await prisma.person.findUnique({
+        where: { id: body.fatherId },
+        select: { generationNumber: true, familyBranch: true },
+      });
+      if (father) {
+        if (!generationNumber && father.generationNumber !== null) {
+          generationNumber = father.generationNumber + 1;
+        }
+        if (!familyBranch) {
+          familyBranch = father.familyBranch;
+        }
+      }
+    }
+
     const person = await prisma.person.create({
       data: {
         fullName: body.fullName,
         nickname: body.nickname,
         gender: body.gender,
         isAlive: body.isAlive ?? true,
-        generationNumber: body.generationNumber,
-        familyBranch: body.familyBranch,
+        generationNumber: generationNumber as number | undefined,
+        familyBranch: familyBranch as string | undefined,
         fatherId: body.fatherId,
         motherId: body.motherId,
         fatherNameFallback: body.fatherNameFallback,
@@ -86,8 +106,8 @@ export async function POST(req: NextRequest) {
         kecamatan: body.kecamatan,
         kabupaten: body.kabupaten,
         province: body.province,
-        latitude: body.latitude,
-        longitude: body.longitude,
+        latitude: body.latitude ? parseFloat(body.latitude.toString()) : undefined,
+        longitude: body.longitude ? parseFloat(body.longitude.toString()) : undefined,
         phone: body.phone,
         deathDate: body.deathDate,
         deathPlace: body.deathPlace,
@@ -95,8 +115,9 @@ export async function POST(req: NextRequest) {
         graveKelurahan: body.graveKelurahan,
         graveKecamatan: body.graveKecamatan,
         graveKabupaten: body.graveKabupaten,
-        graveLatitude: body.graveLatitude,
-        graveLongitude: body.graveLongitude,
+        graveProvince: body.graveProvince,
+        graveLatitude: body.graveLatitude ? parseFloat(body.graveLatitude.toString()) : undefined,
+        graveLongitude: body.graveLongitude ? parseFloat(body.graveLongitude.toString()) : undefined,
         graveNotes: body.graveNotes,
         linkStatus: body.fatherId || body.motherId ? "LINKED" : "UNLINKED",
         status: "APPROVED",
