@@ -32,12 +32,14 @@ export async function fetchPersons(filters?: {
   generation?: number;
   branch?: string;
   linkStatus?: string;
+  limit?: number;
 }): Promise<Person[]> {
   const params = new URLSearchParams();
   if (filters?.search) params.set("search", filters.search);
   if (filters?.generation) params.set("generation", String(filters.generation));
   if (filters?.branch) params.set("branch", filters.branch);
   if (filters?.linkStatus) params.set("linkStatus", filters.linkStatus);
+  if (filters?.limit) params.set("limit", String(filters.limit));
 
   return apiFetch<Person[]>(`/api/persons?${params}`);
 }

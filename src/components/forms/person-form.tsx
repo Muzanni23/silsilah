@@ -100,7 +100,7 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
   const [persons, setPersons] = useState<Person[]>([]);
 
   useEffect(() => {
-    fetchPersons().then(setPersons);
+    fetchPersons({ limit: 500 }).then(setPersons);
   }, []);
 
   useEffect(() => {
