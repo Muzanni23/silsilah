@@ -78,6 +78,7 @@ export default function AddressAutocomplete({
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastEmittedAddressRef = useRef<Partial<AddressData>>({});
 
   // Debounced search via Nominatim
   const searchAddress = useCallback(async (q: string) => {
@@ -136,7 +137,7 @@ export default function AddressAutocomplete({
 
   // Sync manual inputs to parent state immediately when any input field changes
   useEffect(() => {
-    onSelect({
+    const emitted = {
       jalan,
       kelurahan,
       kecamatan,
@@ -145,7 +146,9 @@ export default function AddressAutocomplete({
       latitude: selected?.latitude,
       longitude: selected?.longitude,
       displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
-    });
+    };
+    lastEmittedAddressRef.current = emitted;
+    onSelect(emitted);
   }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
 
   const initJalan = initialAddress?.jalan;
@@ -158,6 +161,20 @@ export default function AddressAutocomplete({
 
   // Sync state ketika initialAddress berubah dari parent (misal dari Map Picker)
   useEffect(() => {
+    // Jika data baru sama dengan data terakhir yang di-emit oleh child, kita skip sync!
+    const isSameAsLastEmitted =
+      initJalan === lastEmittedAddressRef.current.jalan &&
+      initKelurahan === lastEmittedAddressRef.current.kelurahan &&
+      initKecamatan === lastEmittedAddressRef.current.kecamatan &&
+      initKabupaten === lastEmittedAddressRef.current.kabupaten &&
+      initProvinsi === lastEmittedAddressRef.current.provinsi &&
+      initLat === lastEmittedAddressRef.current.latitude &&
+      initLng === lastEmittedAddressRef.current.longitude;
+
+    if (isSameAsLastEmitted) {
+      return;
+    }
+
     if (initJalan !== undefined && initJalan !== jalan) setJalan(initJalan);
     if (initKelurahan !== undefined && initKelurahan !== kelurahan) setKelurahan(initKelurahan);
     if (initKecamatan !== undefined && initKecamatan !== kecamatan) setKecamatan(initKecamatan);
