@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import EditPersonClient from "./edit-client";
 import { Person } from "@/lib/types";
 
-export default async function AdminEditPersonPage({ params }: { params: { id: string } }) {
+export default async function AdminEditPersonPage({ params }: { params: Promise<{ id: string }> }) {
   // Tunggu params (Next.js 16 behavior)
   const { id } = await params;
   
