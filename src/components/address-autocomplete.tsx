@@ -52,6 +52,11 @@ function parseAddress(result: NominatimResult): AddressData {
   };
 }
 
+const isEquivalent = (a: any, b: any) => {
+  if (!a && !b) return true;
+  return a === b;
+};
+
 export default function AddressAutocomplete({
   onSelect,
   initialAddress,
@@ -163,23 +168,23 @@ export default function AddressAutocomplete({
   useEffect(() => {
     // Jika data baru sama dengan data terakhir yang di-emit oleh child, kita skip sync!
     const isSameAsLastEmitted =
-      initJalan === lastEmittedAddressRef.current.jalan &&
-      initKelurahan === lastEmittedAddressRef.current.kelurahan &&
-      initKecamatan === lastEmittedAddressRef.current.kecamatan &&
-      initKabupaten === lastEmittedAddressRef.current.kabupaten &&
-      initProvinsi === lastEmittedAddressRef.current.provinsi &&
-      initLat === lastEmittedAddressRef.current.latitude &&
-      initLng === lastEmittedAddressRef.current.longitude;
+      isEquivalent(initJalan, lastEmittedAddressRef.current.jalan) &&
+      isEquivalent(initKelurahan, lastEmittedAddressRef.current.kelurahan) &&
+      isEquivalent(initKecamatan, lastEmittedAddressRef.current.kecamatan) &&
+      isEquivalent(initKabupaten, lastEmittedAddressRef.current.kabupaten) &&
+      isEquivalent(initProvinsi, lastEmittedAddressRef.current.provinsi) &&
+      isEquivalent(initLat, lastEmittedAddressRef.current.latitude) &&
+      isEquivalent(initLng, lastEmittedAddressRef.current.longitude);
 
     if (isSameAsLastEmitted) {
       return;
     }
 
-    if (initJalan !== undefined && initJalan !== jalan) setJalan(initJalan);
-    if (initKelurahan !== undefined && initKelurahan !== kelurahan) setKelurahan(initKelurahan);
-    if (initKecamatan !== undefined && initKecamatan !== kecamatan) setKecamatan(initKecamatan);
-    if (initKabupaten !== undefined && initKabupaten !== kabupaten) setKabupaten(initKabupaten);
-    if (initProvinsi !== undefined && initProvinsi !== provinsi) setProvinsi(initProvinsi);
+    if (initJalan !== undefined && !isEquivalent(initJalan, jalan)) setJalan(initJalan || "");
+    if (initKelurahan !== undefined && !isEquivalent(initKelurahan, kelurahan)) setKelurahan(initKelurahan || "");
+    if (initKecamatan !== undefined && !isEquivalent(initKecamatan, kecamatan)) setKecamatan(initKecamatan || "");
+    if (initKabupaten !== undefined && !isEquivalent(initKabupaten, kabupaten)) setKabupaten(initKabupaten || "");
+    if (initProvinsi !== undefined && !isEquivalent(initProvinsi, provinsi)) setProvinsi(initProvinsi || "");
     if (
       initLat !== undefined &&
       initLng !== undefined &&
