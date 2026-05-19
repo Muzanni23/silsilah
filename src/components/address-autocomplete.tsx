@@ -52,11 +52,6 @@ function parseAddress(result: NominatimResult): AddressData {
   };
 }
 
-const isEquivalent = (a: any, b: any) => {
-  if (!a && !b) return true;
-  return a === b;
-};
-
 export default function AddressAutocomplete({
   onSelect,
   initialAddress,
@@ -74,7 +69,7 @@ export default function AddressAutocomplete({
     initialAddress?.latitude ? (initialAddress as AddressData) : null
   );
 
-  // Manual fields
+  // Manual fields — initialized once from initialAddress, then self-managed
   const [jalan, setJalan] = useState(initialAddress?.jalan || "");
   const [kelurahan, setKelurahan] = useState(initialAddress?.kelurahan || "");
   const [kecamatan, setKecamatan] = useState(initialAddress?.kecamatan || "");
@@ -83,7 +78,10 @@ export default function AddressAutocomplete({
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastEmittedAddressRef = useRef<Partial<AddressData>>({});
+  // Track whether an external source (Map Picker) has pushed new coordinates
+  const prevExternalCoordsRef = useRef<string>(
+    `${initialAddress?.latitude ?? ""},${initialAddress?.longitude ?? ""}`
+  );
 
   // Debounced search via Nominatim
   const searchAddress = useCallback(async (q: string) => {
@@ -116,6 +114,31 @@ export default function AddressAutocomplete({
     debounceRef.current = setTimeout(() => searchAddress(value), 500);
   };
 
+  // Helper: build current address from local state
+  const buildCurrentAddress = useCallback(
+    (overrides?: Partial<AddressData>): AddressData => {
+      const j = overrides?.jalan ?? jalan;
+      const kel = overrides?.kelurahan ?? kelurahan;
+      const kec = overrides?.kecamatan ?? kecamatan;
+      const kab = overrides?.kabupaten ?? kabupaten;
+      const prov = overrides?.provinsi ?? provinsi;
+      return {
+        jalan: j,
+        kelurahan: kel,
+        kecamatan: kec,
+        kabupaten: kab,
+        provinsi: prov,
+        latitude: overrides?.latitude ?? selected?.latitude,
+        longitude: overrides?.longitude ?? selected?.longitude,
+        displayName:
+          overrides?.displayName ??
+          selected?.displayName ??
+          [j, kel, kec, kab, prov].filter(Boolean).join(", "),
+      };
+    },
+    [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected]
+  );
+
   const handleSelect = (result: NominatimResult) => {
     const addr = parseAddress(result);
     setSelected(addr);
@@ -140,82 +163,55 @@ export default function AddressAutocomplete({
     setResults([]);
   };
 
-  // Sync manual inputs to parent state immediately when any input field changes
-  useEffect(() => {
-    const emitted = {
-      jalan,
-      kelurahan,
-      kecamatan,
-      kabupaten,
-      provinsi,
-      latitude: selected?.latitude,
-      longitude: selected?.longitude,
-      displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
-    };
-    lastEmittedAddressRef.current = emitted;
-    onSelect(emitted);
-  }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
-
-  const initJalan = initialAddress?.jalan;
-  const initKelurahan = initialAddress?.kelurahan;
-  const initKecamatan = initialAddress?.kecamatan;
-  const initKabupaten = initialAddress?.kabupaten;
-  const initProvinsi = initialAddress?.provinsi;
+  // Sync ONLY when parent sends genuinely new coordinates (from Map Picker click).
+  // We detect this by comparing the incoming lat/lng against what we last saw.
   const initLat = initialAddress?.latitude;
   const initLng = initialAddress?.longitude;
 
-  // Sync state ketika initialAddress berubah dari parent (misal dari Map Picker)
   useEffect(() => {
-    // Jika data baru sama dengan data terakhir yang di-emit oleh child, kita skip sync!
-    const isSameAsLastEmitted =
-      isEquivalent(initJalan, lastEmittedAddressRef.current.jalan) &&
-      isEquivalent(initKelurahan, lastEmittedAddressRef.current.kelurahan) &&
-      isEquivalent(initKecamatan, lastEmittedAddressRef.current.kecamatan) &&
-      isEquivalent(initKabupaten, lastEmittedAddressRef.current.kabupaten) &&
-      isEquivalent(initProvinsi, lastEmittedAddressRef.current.provinsi) &&
-      isEquivalent(initLat, lastEmittedAddressRef.current.latitude) &&
-      isEquivalent(initLng, lastEmittedAddressRef.current.longitude);
-
-    if (isSameAsLastEmitted) {
-      return;
+    const newKey = `${initLat ?? ""},${initLng ?? ""}`;
+    if (newKey === prevExternalCoordsRef.current) {
+      return; // No coordinate change from outside — skip
     }
+    prevExternalCoordsRef.current = newKey;
 
-    if (initJalan !== undefined && !isEquivalent(initJalan, jalan)) setJalan(initJalan || "");
-    if (initKelurahan !== undefined && !isEquivalent(initKelurahan, kelurahan)) setKelurahan(initKelurahan || "");
-    if (initKecamatan !== undefined && !isEquivalent(initKecamatan, kecamatan)) setKecamatan(initKecamatan || "");
-    if (initKabupaten !== undefined && !isEquivalent(initKabupaten, kabupaten)) setKabupaten(initKabupaten || "");
-    if (initProvinsi !== undefined && !isEquivalent(initProvinsi, provinsi)) setProvinsi(initProvinsi || "");
-    if (
-      initLat !== undefined &&
-      initLng !== undefined &&
-      (initLat !== selected?.latitude || initLng !== selected?.longitude)
-    ) {
+    // Coordinates changed from outside (Map Picker) — sync all fields
+    if (initLat !== undefined && initLng !== undefined) {
+      const initJ = initialAddress?.jalan || "";
+      const initKel = initialAddress?.kelurahan || "";
+      const initKec = initialAddress?.kecamatan || "";
+      const initKab = initialAddress?.kabupaten || "";
+      const initProv = initialAddress?.provinsi || "";
+
+      setJalan(initJ);
+      setKelurahan(initKel);
+      setKecamatan(initKec);
+      setKabupaten(initKab);
+      setProvinsi(initProv);
       setSelected({
-        jalan: initJalan || "",
-        kelurahan: initKelurahan || "",
-        kecamatan: initKecamatan || "",
-        kabupaten: initKabupaten || "",
-        provinsi: initProvinsi || "",
+        jalan: initJ,
+        kelurahan: initKel,
+        kecamatan: initKec,
+        kabupaten: initKab,
+        provinsi: initProv,
         latitude: initLat,
         longitude: initLng,
         displayName: initialAddress?.displayName || "",
       });
     }
-  }, [initJalan, initKelurahan, initKecamatan, initKabupaten, initProvinsi, initLat, initLng]);
+  }, [initLat, initLng, initialAddress]);
 
-  // Emit perubahan manual
-  const emitManualChange = useCallback(() => {
-    onSelect({
-      jalan,
-      kelurahan,
-      kecamatan,
-      kabupaten,
-      provinsi,
-      latitude: selected?.latitude || 0,
-      longitude: selected?.longitude || 0,
-      displayName: selected?.displayName || [jalan, kelurahan, kecamatan, kabupaten, provinsi].filter(Boolean).join(", "),
-    });
-  }, [jalan, kelurahan, kecamatan, kabupaten, provinsi, selected, onSelect]);
+  // Emit to parent on each keystroke (no effect loop — direct call from onChange)
+  const handleFieldChange = useCallback(
+    (field: string, value: string) => {
+      const overrides: Partial<AddressData> = { [field]: value };
+      // We need to read latest values, but since this is called inline with setState,
+      // we pass the override for the changed field
+      const addr = buildCurrentAddress(overrides);
+      onSelect(addr);
+    },
+    [buildCurrentAddress, onSelect]
+  );
 
   // Update koordinat dari luar (coordinate picker)
   const updateFromCoordinates = useCallback(
@@ -352,8 +348,10 @@ export default function AddressAutocomplete({
           <input
             type="text"
             value={jalan}
-            onChange={(e) => { setJalan(e.target.value); }}
-            onBlur={emitManualChange}
+            onChange={(e) => {
+              setJalan(e.target.value);
+              handleFieldChange("jalan", e.target.value);
+            }}
             placeholder="Jl. Merdeka No. 10, RT 01/RW 05"
             className="w-full px-3.5 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50 transition-colors"
           />
@@ -364,8 +362,10 @@ export default function AddressAutocomplete({
             <input
               type="text"
               value={kelurahan}
-              onChange={(e) => setKelurahan(e.target.value)}
-              onBlur={emitManualChange}
+              onChange={(e) => {
+                setKelurahan(e.target.value);
+                handleFieldChange("kelurahan", e.target.value);
+              }}
               placeholder="Kelurahan"
               className="w-full px-3.5 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50 transition-colors"
             />
@@ -375,8 +375,10 @@ export default function AddressAutocomplete({
             <input
               type="text"
               value={kecamatan}
-              onChange={(e) => setKecamatan(e.target.value)}
-              onBlur={emitManualChange}
+              onChange={(e) => {
+                setKecamatan(e.target.value);
+                handleFieldChange("kecamatan", e.target.value);
+              }}
               placeholder="Kecamatan"
               className="w-full px-3.5 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50 transition-colors"
             />
@@ -388,8 +390,10 @@ export default function AddressAutocomplete({
             <input
               type="text"
               value={kabupaten}
-              onChange={(e) => setKabupaten(e.target.value)}
-              onBlur={emitManualChange}
+              onChange={(e) => {
+                setKabupaten(e.target.value);
+                handleFieldChange("kabupaten", e.target.value);
+              }}
               placeholder="Kabupaten / Kota"
               className="w-full px-3.5 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50 transition-colors"
             />
@@ -399,8 +403,10 @@ export default function AddressAutocomplete({
             <input
               type="text"
               value={provinsi}
-              onChange={(e) => setProvinsi(e.target.value)}
-              onBlur={emitManualChange}
+              onChange={(e) => {
+                setProvinsi(e.target.value);
+                handleFieldChange("provinsi", e.target.value);
+              }}
               placeholder="Provinsi"
               className="w-full px-3.5 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-gold/50 transition-colors"
             />
