@@ -60,8 +60,8 @@ export default async function Home() {
 
         <div className="relative z-10 max-w-3xl mx-auto text-center animate-fade-in">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight mb-6">
-            Silsilah Keluarga{" "}
-            <span className="text-gradient-gold">
+            Silsilah Keluarga
+            <span className="block text-gradient-gold mt-2">
               Bani Abd. Mutthalib
             </span>
           </h1>
