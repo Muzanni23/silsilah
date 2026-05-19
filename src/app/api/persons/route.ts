@@ -67,9 +67,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Auto-detect generation dan inherit familyBranch dari ayah
+    // Auto-detect generation dan inherit familyBranch dari orang tua
     let generationNumber = body.generationNumber;
     let familyBranch = body.familyBranch;
+
+    let parentGen: number | null = null;
+    let parentBranch: string | null = null;
 
     if (body.fatherId) {
       const father = await prisma.person.findUnique({
@@ -77,13 +80,27 @@ export async function POST(req: NextRequest) {
         select: { generationNumber: true, familyBranch: true },
       });
       if (father) {
-        if (!generationNumber && father.generationNumber !== null) {
-          generationNumber = father.generationNumber + 1;
-        }
-        if (!familyBranch) {
-          familyBranch = father.familyBranch;
-        }
+        if (father.generationNumber !== null) parentGen = father.generationNumber;
+        if (father.familyBranch) parentBranch = father.familyBranch;
       }
+    }
+
+    if (!parentGen && body.motherId) {
+      const mother = await prisma.person.findUnique({
+        where: { id: body.motherId },
+        select: { generationNumber: true, familyBranch: true },
+      });
+      if (mother) {
+        if (mother.generationNumber !== null) parentGen = mother.generationNumber;
+        if (!parentBranch && mother.familyBranch) parentBranch = mother.familyBranch;
+      }
+    }
+
+    if (parentGen !== null) {
+      generationNumber = parentGen + 1;
+    }
+    if (parentBranch && !familyBranch) {
+      familyBranch = parentBranch;
     }
 
     const person = await prisma.person.create({

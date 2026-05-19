@@ -3,6 +3,32 @@ import { requireAuth, jsonResponse, errorResponse, logActivity } from "@/lib/api
 import { NextRequest } from "next/server";
 import { sendSubmissionNotification } from "@/lib/email-service";
 
+async function updateDescendantsGeneration(personId: string, parentGenNumber: number) {
+  const nextGen = parentGenNumber + 1;
+  const children = await prisma.person.findMany({
+    where: {
+      OR: [
+        { fatherId: personId },
+        { motherId: personId }
+      ]
+    },
+    select: { id: true }
+  });
+  if (children.length > 0) {
+    await prisma.person.updateMany({
+      where: {
+        id: { in: children.map(c => c.id) }
+      },
+      data: {
+        generationNumber: nextGen
+      }
+    });
+    for (const child of children) {
+      await updateDescendantsGeneration(child.id, nextGen);
+    }
+  }
+}
+
 // GET /api/submissions/[id] — Detail submission
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/submissions/[id]">) {
   const authResult = await requireAuth();
@@ -68,9 +94,12 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
     if (action === "APPROVED" && submission.changeType === "ADD") {
       const data = submission.personData as Record<string, any>;
       
-      // Auto-detect generation dan inherit familyBranch dari ayah
+      // Auto-detect generation dan inherit familyBranch dari orang tua
       let generationNumber = data.generationNumber;
       let familyBranch = data.familyBranch;
+
+      let parentGen: number | null = null;
+      let parentBranch: string | null = null;
 
       if (data.fatherId) {
         const father = await prisma.person.findUnique({
@@ -78,13 +107,27 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
           select: { generationNumber: true, familyBranch: true },
         });
         if (father) {
-          if (!generationNumber && father.generationNumber !== null) {
-            generationNumber = father.generationNumber + 1;
-          }
-          if (!familyBranch) {
-            familyBranch = father.familyBranch;
-          }
+          if (father.generationNumber !== null) parentGen = father.generationNumber;
+          if (father.familyBranch) parentBranch = father.familyBranch;
         }
+      }
+
+      if (!parentGen && data.motherId) {
+        const mother = await prisma.person.findUnique({
+          where: { id: data.motherId },
+          select: { generationNumber: true, familyBranch: true },
+        });
+        if (mother) {
+          if (mother.generationNumber !== null) parentGen = mother.generationNumber;
+          if (!parentBranch && mother.familyBranch) parentBranch = mother.familyBranch;
+        }
+      }
+
+      if (parentGen !== null) {
+        generationNumber = parentGen + 1;
+      }
+      if (parentBranch && !familyBranch) {
+        familyBranch = parentBranch;
       }
 
       const person = await prisma.person.create({
@@ -154,26 +197,82 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
         ...safeData
       } = data;
 
-      const updateData: any = {
-        ...safeData,
-      };
-
-      if (latitude !== undefined) updateData.latitude = latitude ? parseFloat(latitude.toString()) : null;
-      if (longitude !== undefined) updateData.longitude = longitude ? parseFloat(longitude.toString()) : null;
-      if (graveLatitude !== undefined) updateData.graveLatitude = graveLatitude ? parseFloat(graveLatitude.toString()) : null;
-      if (graveLongitude !== undefined) updateData.graveLongitude = graveLongitude ? parseFloat(graveLongitude.toString()) : null;
-
-      if (fatherId !== undefined) {
-        updateData.father = fatherId ? { connect: { id: fatherId } } : { disconnect: true };
-      }
-      if (motherId !== undefined) {
-        updateData.mother = motherId ? { connect: { id: motherId } } : { disconnect: true };
-      }
-
-      await prisma.person.update({
+      const existingPerson = await prisma.person.findUnique({
         where: { id: submission.targetPersonId },
-        data: updateData,
+        select: { fatherId: true, motherId: true, generationNumber: true, familyBranch: true },
       });
+
+      if (existingPerson) {
+        const effFatherId = fatherId !== undefined ? fatherId : existingPerson.fatherId;
+        const effMotherId = motherId !== undefined ? motherId : existingPerson.motherId;
+
+        let parentGen: number | null = null;
+        let parentBranch: string | null = null;
+
+        if (effFatherId) {
+          const fatherObj = await prisma.person.findUnique({
+            where: { id: effFatherId },
+            select: { generationNumber: true, familyBranch: true },
+          });
+          if (fatherObj) {
+            if (fatherObj.generationNumber !== null) parentGen = fatherObj.generationNumber;
+            if (fatherObj.familyBranch) parentBranch = fatherObj.familyBranch;
+          }
+        }
+
+        if (!parentGen && effMotherId) {
+          const motherObj = await prisma.person.findUnique({
+            where: { id: effMotherId },
+            select: { generationNumber: true, familyBranch: true },
+          });
+          if (motherObj) {
+            if (motherObj.generationNumber !== null) parentGen = motherObj.generationNumber;
+            if (!parentBranch && motherObj.familyBranch) parentBranch = motherObj.familyBranch;
+          }
+        }
+
+        let generationNumber = safeData.generationNumber;
+        let familyBranch = safeData.familyBranch || existingPerson.familyBranch;
+
+        if (parentGen !== null) {
+          generationNumber = parentGen + 1;
+        } else if (effFatherId === null && effMotherId === null) {
+          if (generationNumber === undefined || generationNumber === null) {
+            generationNumber = 1;
+          }
+        }
+
+        if (parentBranch && !familyBranch) {
+          familyBranch = parentBranch;
+        }
+
+        const updateData: any = {
+          ...safeData,
+          generationNumber,
+          familyBranch,
+        };
+
+        if (latitude !== undefined) updateData.latitude = latitude ? parseFloat(latitude.toString()) : null;
+        if (longitude !== undefined) updateData.longitude = longitude ? parseFloat(longitude.toString()) : null;
+        if (graveLatitude !== undefined) updateData.graveLatitude = graveLatitude ? parseFloat(graveLatitude.toString()) : null;
+        if (graveLongitude !== undefined) updateData.graveLongitude = graveLongitude ? parseFloat(graveLongitude.toString()) : null;
+
+        if (fatherId !== undefined) {
+          updateData.father = fatherId ? { connect: { id: fatherId } } : { disconnect: true };
+        }
+        if (motherId !== undefined) {
+          updateData.mother = motherId ? { connect: { id: motherId } } : { disconnect: true };
+        }
+
+        await prisma.person.update({
+          where: { id: submission.targetPersonId },
+          data: updateData,
+        });
+
+        if (generationNumber !== null && generationNumber !== existingPerson.generationNumber) {
+          await updateDescendantsGeneration(submission.targetPersonId, generationNumber);
+        }
+      }
     }
 
     const personName =

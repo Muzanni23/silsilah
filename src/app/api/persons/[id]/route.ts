@@ -2,6 +2,32 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth, jsonResponse, errorResponse, logActivity } from "@/lib/api-helpers";
 import { NextRequest } from "next/server";
 
+async function updateDescendantsGeneration(personId: string, parentGenNumber: number) {
+  const nextGen = parentGenNumber + 1;
+  const children = await prisma.person.findMany({
+    where: {
+      OR: [
+        { fatherId: personId },
+        { motherId: personId }
+      ]
+    },
+    select: { id: true }
+  });
+  if (children.length > 0) {
+    await prisma.person.updateMany({
+      where: {
+        id: { in: children.map(c => c.id) }
+      },
+      data: {
+        generationNumber: nextGen
+      }
+    });
+    for (const child of children) {
+      await updateDescendantsGeneration(child.id, nextGen);
+    }
+  }
+}
+
 // GET /api/persons/[id] — Detail person + children + spouses
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/persons/[id]">) {
   const { id } = await ctx.params;
@@ -73,8 +99,61 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
       ...safeData
     } = body;
 
+    const existingPerson = await prisma.person.findUnique({
+      where: { id },
+      select: { fatherId: true, motherId: true, generationNumber: true, familyBranch: true },
+    });
+    if (!existingPerson) {
+      return errorResponse("Anggota tidak ditemukan", 404);
+    }
+
+    const effFatherId = fatherId !== undefined ? fatherId : existingPerson.fatherId;
+    const effMotherId = motherId !== undefined ? motherId : existingPerson.motherId;
+
+    let parentGen: number | null = null;
+    let parentBranch: string | null = null;
+
+    if (effFatherId) {
+      const fatherObj = await prisma.person.findUnique({
+        where: { id: effFatherId },
+        select: { generationNumber: true, familyBranch: true },
+      });
+      if (fatherObj) {
+        if (fatherObj.generationNumber !== null) parentGen = fatherObj.generationNumber;
+        if (fatherObj.familyBranch) parentBranch = fatherObj.familyBranch;
+      }
+    }
+
+    if (!parentGen && effMotherId) {
+      const motherObj = await prisma.person.findUnique({
+        where: { id: effMotherId },
+        select: { generationNumber: true, familyBranch: true },
+      });
+      if (motherObj) {
+        if (motherObj.generationNumber !== null) parentGen = motherObj.generationNumber;
+        if (!parentBranch && motherObj.familyBranch) parentBranch = motherObj.familyBranch;
+      }
+    }
+
+    let generationNumber = safeData.generationNumber;
+    let familyBranch = safeData.familyBranch || existingPerson.familyBranch;
+
+    if (parentGen !== null) {
+      generationNumber = parentGen + 1;
+    } else if (effFatherId === null && effMotherId === null) {
+      if (generationNumber === undefined || generationNumber === null) {
+        generationNumber = 1;
+      }
+    }
+
+    if (parentBranch && !familyBranch) {
+      familyBranch = parentBranch;
+    }
+
     const updateData: any = {
       ...safeData,
+      generationNumber,
+      familyBranch,
     };
 
     if (fatherId !== undefined) {
@@ -85,9 +164,9 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
     }
     
     // Determine link status
-    if (fatherId || motherId || updateData.fatherId || updateData.motherId) {
+    if (effFatherId || effMotherId) {
        updateData.linkStatus = "LINKED";
-    } else if (fatherId === null && motherId === null) {
+    } else if (effFatherId === null && effMotherId === null) {
        updateData.linkStatus = "UNLINKED";
     }
 
@@ -95,6 +174,11 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
       where: { id },
       data: updateData,
     });
+
+    // Cascading recursive update of descendants' generation numbers
+    if (generationNumber !== null && generationNumber !== existingPerson.generationNumber) {
+      await updateDescendantsGeneration(id, generationNumber);
+    }
 
     // If spouseId is provided during update, create a Marriage record if it doesn't exist
     if (spouseId) {
