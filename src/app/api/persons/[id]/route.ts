@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
       childrenAsFather, childrenAsMother,
       marriagesAsHusband, marriagesAsWife,
       _count,
-      fatherId, motherId, spouseId,
+      fatherId, motherId, spouseId, spouseIds,
       city, graveCity, village, district, // Legacy aliases not in DB
       ...safeData
     } = body;
@@ -180,29 +180,50 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
       await updateDescendantsGeneration(id, generationNumber);
     }
 
-    // If spouseId is provided during update, create a Marriage record if it doesn't exist
+    // Sinkronisasi data pasangan (multi-spouse support)
+    // spouseIds = array of all spouse IDs from form
+    // spouseId = single spouse ID (backward compat)
+    const targetSpouseIds: string[] = spouseIds || (spouseId ? [spouseId] : []);
 
-    if (spouseId) {
-      // Check existing marriage
-      const existing = await prisma.marriage.findFirst({
+    if (targetSpouseIds.length > 0 || spouseIds !== undefined) {
+      // Ambil semua marriage yang sudah ada untuk orang ini
+      const existingMarriages = await prisma.marriage.findMany({
         where: {
           OR: [
-            { husbandId: id, wifeId: spouseId },
-            { husbandId: spouseId, wifeId: id }
-          ]
-        }
+            { husbandId: id },
+            { wifeId: id },
+          ],
+        },
       });
 
-      if (!existing) {
-        const isMale = person.gender === "MALE";
-        await prisma.marriage.create({
-          data: {
-            husbandId: isMale ? person.id : spouseId,
-            wifeId: isMale ? spouseId : person.id,
-            status: "MARRIED",
-          }
-        });
+      // Map existing spouseIds dari marriage records
+      const existingSpouseIdSet = new Set(
+        existingMarriages.map((m) => m.husbandId === id ? m.wifeId : m.husbandId)
+      );
+      const targetSpouseIdSet = new Set(targetSpouseIds);
 
+      // 1. Buat marriage baru untuk pasangan yang belum ada
+      const isMale = person.gender === "MALE";
+      for (const sid of targetSpouseIds) {
+        if (!existingSpouseIdSet.has(sid)) {
+          const marriageOrder = existingMarriages.length + 1;
+          await prisma.marriage.create({
+            data: {
+              husbandId: isMale ? person.id : sid,
+              wifeId: isMale ? sid : person.id,
+              status: "MARRIED",
+              marriageOrder,
+            },
+          });
+        }
+      }
+
+      // 2. Hapus marriage yang sudah di-remove dari form
+      for (const m of existingMarriages) {
+        const existingSpouseId = m.husbandId === id ? m.wifeId : m.husbandId;
+        if (!targetSpouseIdSet.has(existingSpouseId)) {
+          await prisma.marriage.delete({ where: { id: m.id } });
+        }
       }
     }
 

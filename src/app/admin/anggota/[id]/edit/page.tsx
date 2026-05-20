@@ -15,7 +15,7 @@ export default async function AdminEditPersonPage({ params }: { params: Promise<
     notFound();
   }
 
-  // Fetch marriages to find existing spouse
+  // Fetch marriages to find ALL existing spouses
   const marriages = await prisma.marriage.findMany({
     where: {
       OR: [
@@ -23,22 +23,23 @@ export default async function AdminEditPersonPage({ params }: { params: Promise<
         { wifeId: id },
       ],
     },
+    orderBy: { marriageOrder: "asc" },
   });
 
-  // Get the spouse ID (first marriage for now)
-  let existingSpouseId: string | undefined;
-  if (marriages.length > 0) {
-    const m = marriages[0];
-    existingSpouseId = m.husbandId === id ? m.wifeId : m.husbandId;
-  }
+  // Get ALL spouse IDs from all marriages
+  const existingSpouseIds: string[] = marriages.map((m) =>
+    m.husbandId === id ? m.wifeId : m.husbandId
+  );
 
   // Parse tanggal ke string format YYYY-MM-DD
   const formattedPerson = {
     ...person,
     birthDate: person.birthDate ? person.birthDate : undefined,
     deathDate: person.deathDate ? person.deathDate : undefined,
-    // Tambahkan spouseId dari marriage record
-    spouseId: existingSpouseId,
+    // Tambahkan semua spouseIds dari marriage records
+    spouseIds: existingSpouseIds,
+    // Backward compat: tetap kirim spouseId pertama
+    spouseId: existingSpouseIds[0],
   };
 
   return <EditPersonClient person={formattedPerson as unknown as Partial<Person>} />;

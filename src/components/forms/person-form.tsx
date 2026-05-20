@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { fetchPersons, fetchPersonById } from "@/lib/api";
 import { Gender, Person } from "@/lib/types";
 import { MapPin, Search, X, Save } from "lucide-react";
@@ -19,6 +19,7 @@ export interface PersonFormData {
   phone?: string;
   fatherId?: string;
   spouseId?: string;
+  spouseIds?: string[];
   // Domisili
   address?: string;
   kelurahan?: string;
@@ -85,9 +86,9 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
   const [selectedParent, setSelectedParent] = useState<Person | null>(null);
   const [showParentSearch, setShowParentSearch] = useState(false);
   
-  // Spouse search
+  // Spouse search (multi-spouse support)
   const [spouseSearch, setSpouseSearch] = useState("");
-  const [selectedSpouse, setSelectedSpouse] = useState<Person | null>(null);
+  const [selectedSpouses, setSelectedSpouses] = useState<Person[]>([]);
   const [showSpouseSearch, setShowSpouseSearch] = useState(false);
   
   const [isAlive, setIsAlive] = useState<boolean>(
@@ -111,22 +112,35 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
     }
   }, [initialData?.fatherId]);
 
-  // Load existing spouse from marriage record (spouseId is passed from server)
+  // Load existing spouses from marriage records (spouseIds array is passed from server)
   useEffect(() => {
-    const spouseId = (initialData as any)?.spouseId;
-    if (spouseId) {
-      fetchPersonById(spouseId).then(spouse => {
-        if (spouse) setSelectedSpouse(spouse);
-      });
+    const spouseIds: string[] = (initialData as any)?.spouseIds || [];
+    // Fallback: jika hanya ada spouseId tunggal (backward compat)
+    const singleSpouseId = (initialData as any)?.spouseId;
+    const idsToLoad = spouseIds.length > 0 ? spouseIds : (singleSpouseId ? [singleSpouseId] : []);
+    
+    if (idsToLoad.length > 0) {
+      Promise.all(idsToLoad.map((sid: string) => fetchPersonById(sid)))
+        .then((results) => {
+          const validSpouses = results.filter((s): s is Person => s !== null);
+          setSelectedSpouses(validSpouses);
+        });
     }
-  }, [(initialData as any)?.spouseId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const parentResults = parentSearch
     ? persons.filter((p) => p.fullName.toLowerCase().includes(parentSearch.toLowerCase()) && p.id !== initialData?.id).slice(0, 5)
     : [];
 
+  // Filter out already selected spouses from search results
+  const selectedSpouseIds = useMemo(() => new Set(selectedSpouses.map(s => s.id)), [selectedSpouses]);
   const spouseResults = spouseSearch
-    ? persons.filter((p) => p.fullName.toLowerCase().includes(spouseSearch.toLowerCase()) && p.id !== initialData?.id).slice(0, 5)
+    ? persons.filter((p) => 
+        p.fullName.toLowerCase().includes(spouseSearch.toLowerCase()) && 
+        p.id !== initialData?.id &&
+        !selectedSpouseIds.has(p.id)
+      ).slice(0, 5)
     : [];
 
   const handleDomisiliSelect = useCallback((addr: AddressData) => {
@@ -219,7 +233,8 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
       birthPlace: (form.get("birthPlace") as string) || undefined,
       phone: (form.get("phone") as string) || undefined,
       fatherId: selectedParent?.id || undefined,
-      spouseId: selectedSpouse?.id || undefined,
+      spouseId: selectedSpouses.length > 0 ? selectedSpouses[0].id : undefined,
+      spouseIds: selectedSpouses.length > 0 ? selectedSpouses.map(s => s.id) : undefined,
       
       address: isAlive ? (domisili.jalan || undefined) : undefined,
       kelurahan: isAlive ? (domisili.kelurahan || undefined) : undefined,
@@ -326,37 +341,54 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
 
           <div className="relative">
             <label className="block text-xs font-medium text-muted mb-1.5">Pasangan (Suami/Istri) (Opsional)</label>
-            {selectedSpouse ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gold-muted/20 border border-gold/30">
-                <span className="text-sm font-medium">{selectedSpouse.fullName}</span>
-                <span className="text-[10px] text-muted">Gen {selectedSpouse.generationNumber}</span>
-                <button type="button" onClick={() => { setSelectedSpouse(null); setShowSpouseSearch(true); }} className="ml-auto text-muted hover:text-foreground">
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <div className="relative">
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border">
-                  <Search size={14} className="text-muted" />
-                  <input type="text" value={spouseSearch}
-                    onChange={(e) => { setSpouseSearch(e.target.value); setShowSpouseSearch(true); }}
-                    onFocus={() => setShowSpouseSearch(true)}
-                    placeholder="Ketik nama pasangan untuk mencari..."
-                    className="bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1" />
-                </div>
-                {showSpouseSearch && spouseResults.length > 0 && (
-                  <div className="absolute z-10 top-full mt-1 w-full glass rounded-xl border border-border shadow-xl max-h-48 overflow-y-auto">
-                    {spouseResults.map((p) => (
-                      <button key={p.id} type="button"
-                        onClick={() => { setSelectedSpouse(p); setSpouseSearch(""); setShowSpouseSearch(false); }}
-                        className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-white/5 text-left text-sm transition-colors">
-                        <span className="font-medium">{p.fullName}</span>
-                        <span className="text-[10px] text-muted">Gen {p.generationNumber} · {p.familyBranch}</span>
-                      </button>
-                    ))}
+            
+            {/* Daftar pasangan yang sudah dipilih */}
+            {selectedSpouses.length > 0 && (
+              <div className="space-y-2 mb-2">
+                {selectedSpouses.map((spouse, idx) => (
+                  <div key={spouse.id} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gold-muted/20 border border-gold/30">
+                    <span className="text-xs font-bold text-gold-light min-w-[18px]">{idx + 1}.</span>
+                    <span className="text-sm font-medium">{spouse.fullName}</span>
+                    <span className="text-[10px] text-muted">Gen {spouse.generationNumber}</span>
+                    <button type="button" onClick={() => {
+                      setSelectedSpouses(prev => prev.filter(s => s.id !== spouse.id));
+                    }} className="ml-auto text-muted hover:text-red-400 transition-colors" title="Hapus pasangan">
+                      <X size={14} />
+                    </button>
                   </div>
-                )}
+                ))}
               </div>
+            )}
+
+            {/* Search untuk menambah pasangan baru */}
+            <div className="relative">
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-background border border-border">
+                <Search size={14} className="text-muted" />
+                <input type="text" value={spouseSearch}
+                  onChange={(e) => { setSpouseSearch(e.target.value); setShowSpouseSearch(true); }}
+                  onFocus={() => setShowSpouseSearch(true)}
+                  placeholder={selectedSpouses.length > 0 ? "Tambah pasangan lain..." : "Ketik nama pasangan untuk mencari..."}
+                  className="bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground flex-1" />
+              </div>
+              {showSpouseSearch && spouseResults.length > 0 && (
+                <div className="absolute z-10 top-full mt-1 w-full glass rounded-xl border border-border shadow-xl max-h-48 overflow-y-auto">
+                  {spouseResults.map((p) => (
+                    <button key={p.id} type="button"
+                      onClick={() => { 
+                        setSelectedSpouses(prev => [...prev, p]); 
+                        setSpouseSearch(""); 
+                        setShowSpouseSearch(false); 
+                      }}
+                      className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-white/5 text-left text-sm transition-colors">
+                      <span className="font-medium">{p.fullName}</span>
+                      <span className="text-[10px] text-muted">Gen {p.generationNumber} · {p.familyBranch}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {selectedSpouses.length > 0 && (
+              <p className="text-[10px] text-muted mt-1">💍 {selectedSpouses.length} pasangan terdaftar. Anda dapat menambah pasangan lebih dari satu.</p>
             )}
           </div>
         </Section>

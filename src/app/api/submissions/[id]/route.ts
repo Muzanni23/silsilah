@@ -166,18 +166,21 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
         },
       });
 
-      if (data.spouseId) {
+      // Multi-spouse support: create marriage records
+      const allSpouseIds: string[] = data.spouseIds || (data.spouseId ? [data.spouseId] : []);
+      if (allSpouseIds.length > 0) {
         const isHusband = person.gender === "MALE";
-        const husbandId = isHusband ? person.id : (data.spouseId as string);
-        const wifeId = isHusband ? (data.spouseId as string) : person.id;
-        
-        await prisma.marriage.create({
-          data: {
-            husbandId,
-            wifeId,
-            status: "MARRIED",
-          },
-        });
+        for (let i = 0; i < allSpouseIds.length; i++) {
+          const sid = allSpouseIds[i] as string;
+          await prisma.marriage.create({
+            data: {
+              husbandId: isHusband ? person.id : sid,
+              wifeId: isHusband ? sid : person.id,
+              status: "MARRIED",
+              marriageOrder: i + 1,
+            },
+          });
+        }
       }
     }
 
@@ -191,7 +194,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
         childrenAsFather, childrenAsMother,
         marriagesAsHusband, marriagesAsWife,
         _count,
-        fatherId, motherId, spouseId,
+        fatherId, motherId, spouseId, spouseIds,
         city, graveCity, village, district,
         latitude, longitude, graveLatitude, graveLongitude,
         ...safeData
