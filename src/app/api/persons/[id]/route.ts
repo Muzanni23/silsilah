@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
       childrenAsFather, childrenAsMother,
       marriagesAsHusband, marriagesAsWife,
       _count,
-      fatherId, motherId, spouseId, spouseIds,
+      fatherId, motherId, spouseId, spouseIds, newSpouses,
       city, graveCity, village, district, // Legacy aliases not in DB
       ...safeData
     } = body;
@@ -181,9 +181,28 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
     }
 
     // Sinkronisasi data pasangan (multi-spouse support)
-    // spouseIds = array of all spouse IDs from form
-    // spouseId = single spouse ID (backward compat)
-    const targetSpouseIds: string[] = spouseIds || (spouseId ? [spouseId] : []);
+    // 1. Buat Person baru untuk pasangan yang belum ada di database
+    const createdSpouseIds: string[] = [];
+    if (newSpouses && Array.isArray(newSpouses) && newSpouses.length > 0) {
+      for (const ns of newSpouses) {
+        if (ns.fullName && ns.gender) {
+          const newPerson = await prisma.person.create({
+            data: {
+              fullName: ns.fullName,
+              gender: ns.gender,
+              isAlive: true,
+              linkStatus: "UNLINKED",
+              status: "APPROVED",
+            },
+          });
+          createdSpouseIds.push(newPerson.id);
+        }
+      }
+    }
+
+    // 2. Gabungkan semua spouse IDs (existing + baru dibuat)
+    const existingIds: string[] = spouseIds || (spouseId ? [spouseId] : []);
+    const targetSpouseIds: string[] = [...existingIds, ...createdSpouseIds];
 
     if (targetSpouseIds.length > 0 || spouseIds !== undefined) {
       // Ambil semua marriage yang sudah ada untuk orang ini

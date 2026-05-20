@@ -166,8 +166,28 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/submissions/
         },
       });
 
-      // Multi-spouse support: create marriage records
-      const allSpouseIds: string[] = data.spouseIds || (data.spouseId ? [data.spouseId] : []);
+      // Multi-spouse support: create Person records for new external spouses first
+      const createdIds: string[] = [];
+      if (data.newSpouses && Array.isArray(data.newSpouses)) {
+        for (const ns of data.newSpouses) {
+          if (ns.fullName && ns.gender) {
+            const newPerson = await prisma.person.create({
+              data: {
+                fullName: ns.fullName,
+                gender: ns.gender,
+                isAlive: true,
+                linkStatus: "UNLINKED",
+                status: "APPROVED",
+              },
+            });
+            createdIds.push(newPerson.id);
+          }
+        }
+      }
+
+      // Create marriage records for all spouses (existing + newly created)
+      const existingSpouseIds: string[] = data.spouseIds || (data.spouseId ? [data.spouseId] : []);
+      const allSpouseIds: string[] = [...existingSpouseIds, ...createdIds];
       if (allSpouseIds.length > 0) {
         const isHusband = person.gender === "MALE";
         for (let i = 0; i < allSpouseIds.length; i++) {
