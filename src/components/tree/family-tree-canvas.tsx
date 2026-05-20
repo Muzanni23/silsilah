@@ -42,7 +42,9 @@ function getSpousesOf(personId: string, allPersons: Person[], allMarriages: Marr
 }
 
 function buildTree(persons: Person[], marriages: Marriage[]) {
-  const linked = persons;
+  // Hanya tampilkan person LINKED di pohon. Person UNLINKED (pasangan luar keluarga)
+  // tidak menjadi node pohon — mereka hanya muncul sebagai nama di sidebar.
+  const linked = persons.filter((p) => p.linkStatus !== "UNLINKED");
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
