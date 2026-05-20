@@ -223,6 +223,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
 
       // 1. Buat marriage baru untuk pasangan yang belum ada
       const isMale = person.gender === "MALE";
+      const newlyCreatedMarriageSpouseIds: string[] = [];
       for (const sid of targetSpouseIds) {
         if (!existingSpouseIdSet.has(sid)) {
           const marriageOrder = existingMarriages.length + 1;
@@ -234,6 +235,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
               marriageOrder,
             },
           });
+          newlyCreatedMarriageSpouseIds.push(sid);
         }
       }
 
@@ -242,6 +244,41 @@ export async function PUT(req: NextRequest, ctx: RouteContext<"/api/persons/[id]
         const existingSpouseId = m.husbandId === id ? m.wifeId : m.husbandId;
         if (!targetSpouseIdSet.has(existingSpouseId)) {
           await prisma.marriage.delete({ where: { id: m.id } });
+        }
+      }
+
+      // 3. Auto-sinkronisasi anak: hubungkan anak ke kedua orang tua
+      // Jika person LAKI-LAKI menikah → set motherId pada anak-anaknya yang belum punya ibu
+      // Jika person PEREMPUAN menikah → set fatherId pada anak-anaknya yang belum punya ayah
+      if (newlyCreatedMarriageSpouseIds.length > 0) {
+        if (isMale) {
+          // Person = ayah, pasangan baru = ibu
+          // Cari anak yang fatherId = person.id tapi motherId kosong
+          const orphanedChildren = await prisma.person.findMany({
+            where: { fatherId: id, motherId: null },
+            select: { id: true },
+          });
+          if (orphanedChildren.length > 0 && newlyCreatedMarriageSpouseIds.length > 0) {
+            // Hubungkan ke pasangan pertama yang baru ditambahkan
+            const firstNewSpouseId = newlyCreatedMarriageSpouseIds[0];
+            await prisma.person.updateMany({
+              where: { id: { in: orphanedChildren.map(c => c.id) } },
+              data: { motherId: firstNewSpouseId },
+            });
+          }
+        } else {
+          // Person = ibu, pasangan baru = ayah
+          const orphanedChildren = await prisma.person.findMany({
+            where: { motherId: id, fatherId: null },
+            select: { id: true },
+          });
+          if (orphanedChildren.length > 0 && newlyCreatedMarriageSpouseIds.length > 0) {
+            const firstNewSpouseId = newlyCreatedMarriageSpouseIds[0];
+            await prisma.person.updateMany({
+              where: { id: { in: orphanedChildren.map(c => c.id) } },
+              data: { fatherId: firstNewSpouseId },
+            });
+          }
         }
       }
     }

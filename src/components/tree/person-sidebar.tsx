@@ -141,19 +141,39 @@ export default function PersonSidebar({ person, allPersons, allMarriages, onClos
             <div className="flex flex-col gap-1 mt-1">
               <p className="text-xs text-muted mb-1">{spouses.length} Pasangan Terdaftar:</p>
               <div className="flex flex-wrap gap-1">
-                {spouses.map((s) => (
-                  <span
-                    key={s.id}
-                    onClick={() => onSelectPerson?.(s.id)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20 cursor-pointer hover:bg-gold/10 hover:border-gold/30 hover:text-gold-light transition-all"
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full mr-0.5"
-                      style={{ background: s.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
-                    />
-                    {s.fullName} {s.nickname && `(${s.nickname})`}
-                  </span>
-                ))}
+                {spouses.map((s) => {
+                  // Pasangan internal (sesama keturunan) = LINKED = clickable
+                  const isInternal = s.linkStatus === "LINKED";
+                  
+                  if (isInternal) {
+                    return (
+                      <span
+                        key={s.id}
+                        onClick={() => onSelectPerson?.(s.id)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gold/10 text-[11px] text-gold-light border border-gold/30 cursor-pointer hover:bg-gold/20 hover:border-gold/50 transition-all"
+                        title={`Sesama keturunan · ${s.familyBranch || "Klik untuk lihat detail"}`}
+                      >
+                        <span className="text-[10px]">💍</span>
+                        {s.fullName} {s.nickname && `(${s.nickname})`}
+                      </span>
+                    );
+                  } else {
+                    // Pasangan eksternal (luar keluarga) = UNLINKED = tidak clickable
+                    return (
+                      <span
+                        key={s.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 text-[11px] text-muted border border-border/20"
+                        title="Bukan keturunan Bani Abd. Mutthalib"
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full mr-0.5"
+                          style={{ background: s.gender === Gender.MALE ? "#60a5fa" : "#f472b6" }}
+                        />
+                        {s.fullName} {s.nickname && `(${s.nickname})`}
+                      </span>
+                    );
+                  }
+                })}
               </div>
             </div>
           ) : (
