@@ -27,7 +27,7 @@ export async function requireAuth(allowedRoles?: string[]): Promise<AuthError | 
   // Check user status
   const user = session.user as Record<string, unknown>;
   if (user.status !== "ACTIVE") {
-    return { error: "Akun Anda belum diaktifkan atau ditangguhkan", status: 403 };
+    return { error: `Akun Anda belum diaktifkan (status: ${user.status}). Hubungi admin atau gunakan bootstrap admin jika ini adalah akun pertama.`, status: 403 };
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role as string)) {

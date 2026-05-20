@@ -20,9 +20,14 @@ export default function EditPersonClient({ person }: { person: Partial<Person> }
       setSuccess(true);
       // Optional: router.refresh() untuk mengupdate server data jika kembali ke halaman sebelumnya
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Gagal memperbarui data.");
+      const msg = e?.message || "Gagal memperbarui data.";
+      if (msg.includes("403") || msg.includes("Unauthorized") || msg.includes("belum diaktifkan") || msg.includes("Forbidden")) {
+        alert("Gagal menyimpan: Akun Anda belum diaktifkan atau tidak memiliki akses admin. Hubungi Super Admin untuk mengaktifkan akun Anda.");
+      } else {
+        alert(`Gagal memperbarui data: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }

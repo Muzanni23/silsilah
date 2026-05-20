@@ -6,20 +6,43 @@ import { fetchStats, fetchSubmissions } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { DataStatus, PersonSubmission } from "@/lib/types";
 import {
-  Users, Plus, Clock, CheckCircle, FileText, TreePine, Map,
+  Users, Plus, Clock, CheckCircle, FileText, TreePine, Map, ShieldAlert
 } from "lucide-react";
 
 export default function DasborPage() {
-  const { currentUser } = useAppStore();
+  const { currentUser, checkSession } = useAppStore();
   const [stats, setStats] = useState<any>(null);
   const [mySubs, setMySubs] = useState<PersonSubmission[]>([]);
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [bootstrapMsg, setBootstrapMsg] = useState("");
 
   useEffect(() => {
-    fetchStats().then(setStats);
+    fetchStats().then(setStats).catch(() => setStats({ totalAnggota: 0, masihHidup: 0, wafat: 0, orphanCount: 0 }));
     if (currentUser?.id) {
-      fetchSubmissions({ userId: currentUser.id }).then(setMySubs);
+      fetchSubmissions({ userId: currentUser.id }).then(setMySubs).catch(() => {});
     }
   }, [currentUser?.id]);
+
+  const handleBootstrap = async () => {
+    setBootstrapping(true);
+    setBootstrapMsg("");
+    try {
+      const res = await fetch("/api/admin/bootstrap", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setBootstrapMsg("✅ " + (data.message || "Akun berhasil diaktifkan sebagai Super Admin!"));
+        // Refresh session
+        await checkSession();
+        window.location.reload();
+      } else {
+        setBootstrapMsg("❌ " + (data.error || "Gagal mengaktifkan admin."));
+      }
+    } catch {
+      setBootstrapMsg("❌ Gagal terhubung ke server.");
+    } finally {
+      setBootstrapping(false);
+    }
+  };
 
   if (!stats) return <div className="p-8 text-center text-muted">Memuat Dasbor...</div>;
 
@@ -27,8 +50,40 @@ export default function DasborPage() {
   const myPending = mySubs.filter((s) => s.status === DataStatus.PENDING).length;
   const myApproved = mySubs.filter((s) => s.status === DataStatus.APPROVED).length;
 
+  // Check if user needs activation
+  const needsActivation = currentUser && (currentUser as any).status !== "ACTIVE";
+
   return (
     <div className="max-w-4xl animate-fade-in">
+      {/* Bootstrap Admin Banner */}
+      {needsActivation && (
+        <div className="mb-6 glass rounded-xl p-5 border border-amber-500/30 bg-amber-500/5">
+          <div className="flex items-start gap-3">
+            <ShieldAlert size={22} className="text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-amber-500 mb-1">Akun Belum Diaktifkan</h3>
+              <p className="text-xs text-muted mb-3">
+                Akun Anda berstatus <span className="font-semibold text-amber-400">{(currentUser as any).status}</span>. 
+                Anda tidak dapat mengedit data atau mengelola anggota sampai akun diaktifkan.
+                {" "}Jika Anda adalah admin pertama, klik tombol di bawah untuk mengaktifkan akun secara otomatis.
+              </p>
+              <button
+                onClick={handleBootstrap}
+                disabled={bootstrapping}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-gold to-gold-dark text-background hover:brightness-110 transition-all disabled:opacity-60"
+              >
+                {bootstrapping ? "Mengaktifkan..." : "🚀 Aktifkan Sebagai Super Admin"}
+              </button>
+              {bootstrapMsg && (
+                <p className={`text-xs mt-2 ${bootstrapMsg.startsWith("✅") ? "text-green-400" : "text-red-400"}`}>
+                  {bootstrapMsg}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="text-xl font-bold mb-1">Selamat Datang, {currentUser?.name || "Anggota"}!</h1>
       <p className="text-sm text-muted mb-6">Kelola kontribusi data silsilah keluarga Anda.</p>
 
