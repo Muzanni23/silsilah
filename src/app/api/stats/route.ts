@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       _count: { id: true },
       where: { status: "APPROVED", generationNumber: { not: null } },
       orderBy: { generationNumber: 'asc' }
-    })) as any[];
+    } as any)) as any[];
 
     const generationStats = generationsGroup.map(g => ({
       generation: g.generationNumber,
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         _count: { id: 'desc' }
       },
       take: 5
-    })) as any[];
+    } as any)) as any[];
 
     const cityStats = citiesGroup.map(c => ({
       city: c.kabupaten,

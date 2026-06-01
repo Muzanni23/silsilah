@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import PetaClient from "./peta-client";
+import { Person } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 

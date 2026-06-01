@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Next.js Standard Middleware
-export function middleware(request: NextRequest) {
+// Next.js 16: proxy.ts replaces middleware.ts
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Ambil session token dari cookie Better Auth (dukungan HTTP & HTTPS)
