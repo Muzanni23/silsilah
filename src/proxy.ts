@@ -5,10 +5,19 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Ambil session token dari cookie Better Auth (dukungan HTTP & HTTPS)
-  const sessionToken = request.cookies.get("better-auth.session_token")?.value ||
-                       request.cookies.get("__secure-better-auth.session_token")?.value;
+  // Ambil session token dari cookie Better Auth secara robust
+  // (mencari cookie apa pun yang berakhiran "session_token" secara case-insensitive)
+  const sessionCookie = request.cookies.getAll().find(
+    c => c.name.toLowerCase().endsWith("session_token")
+  );
+  const sessionToken = sessionCookie?.value;
   const isLoggedIn = !!sessionToken;
+
+  console.log("Proxy auth check:", {
+    pathname,
+    detectedCookie: sessionCookie?.name,
+    isLoggedIn
+  });
 
   // Protected routes: member area, pohon silsilah, and peta lokasi
   if (pathname.startsWith("/dasbor") || pathname.startsWith("/pohon") || pathname.startsWith("/peta")) {
