@@ -169,7 +169,7 @@ export async function fetchActivityLogs(): Promise<ActivityLog[]> {
 
 export async function fetchStats() {
   try {
-    return await apiFetch<any>("/api/stats");
+    return await apiFetch<Record<string, unknown>>("/api/stats");
   } catch {
     return {
       totalAnggota: 0,

@@ -90,6 +90,7 @@ export default function CoordinatePicker({
   // Sync dari luar (address autocomplete)
   useEffect(() => {
     if (externalPos) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPos(externalPos);
       reverseGeocode(externalPos[0], externalPos[1]).then((name) => {
         if (name) setAddr(name);

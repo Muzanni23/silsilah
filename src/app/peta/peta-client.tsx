@@ -26,13 +26,9 @@ export default function PetaClient({ persons }: { persons: Person[] }) {
   const tabParam = searchParams.get("tab") as "domisili" | "makam";
 
   const [tab, setTab] = useState<"domisili" | "makam">(tabParam || "domisili");
-  const [initialCenter, setInitialCenter] = useState<[number, number] | null>(null);
-
-  useEffect(() => {
-    if (latStr && lngStr) {
-      setInitialCenter([parseFloat(latStr), parseFloat(lngStr)]);
-    }
-  }, [latStr, lngStr]);
+  const [initialCenter, setInitialCenter] = useState<[number, number] | null>(
+    latStr && lngStr ? [parseFloat(latStr), parseFloat(lngStr)] : null
+  );
 
   return (
     <div className="flex flex-col h-screen">

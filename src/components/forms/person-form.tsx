@@ -107,6 +107,10 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
     initialData?.isAlive !== undefined ? initialData.isAlive : true
   );
   
+  const [gender, setGender] = useState<Gender | "">(
+    initialData?.gender || ""
+  );
+  
   const [errorMsg, setErrorMsg] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -126,8 +130,9 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
 
   // Load existing spouses from marriage records (spouseIds array is passed from server)
   useEffect(() => {
-    const spouseIds: string[] = (initialData as any)?.spouseIds || [];
-    const singleSpouseId = (initialData as any)?.spouseId;
+    const extendedData = initialData as Partial<Person> & { spouseIds?: string[]; spouseId?: string };
+    const spouseIds: string[] = extendedData?.spouseIds || [];
+    const singleSpouseId = extendedData?.spouseId;
     const idsToLoad = spouseIds.length > 0 ? spouseIds : (singleSpouseId ? [singleSpouseId] : []);
     
     if (idsToLoad.length > 0) {
@@ -162,8 +167,7 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
     : [];
   
   // Determine opposite gender for new spouse suggestion
-  const formGender = (formRef.current?.querySelector('[name="gender"]') as HTMLSelectElement)?.value;
-  const oppositeGender = (formGender || initialData?.gender) === "MALE" ? Gender.FEMALE : Gender.MALE;
+  const oppositeGender = (gender || initialData?.gender) === "MALE" ? Gender.FEMALE : Gender.MALE;
 
   const handleDomisiliSelect = useCallback((addr: AddressData) => {
     setDomisili(addr);
@@ -256,8 +260,8 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
       phone: (form.get("phone") as string) || undefined,
       fatherId: selectedParent?.id || undefined,
       spouseId: undefined,
-      spouseIds: spouseEntries.filter(e => e.type === "existing").map(e => (e as any).person.id),
-      newSpouses: spouseEntries.filter(e => e.type === "new").map(e => ({ fullName: (e as any).fullName, gender: (e as any).gender })),
+      spouseIds: (spouseEntries.filter(e => e.type === "existing") as Extract<SpouseEntry, { type: "existing" }>[]).map(e => e.person.id),
+      newSpouses: (spouseEntries.filter(e => e.type === "new") as Extract<SpouseEntry, { type: "new" }>[]).map(e => ({ fullName: e.fullName, gender: e.gender })),
       
       address: isAlive ? (domisili.jalan || undefined) : undefined,
       kelurahan: isAlive ? (domisili.kelurahan || undefined) : undefined,
@@ -298,7 +302,7 @@ export default function PersonForm({ initialData, onSubmit, loading, submitLabel
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-muted mb-1.5">Jenis Kelamin *</label>
-              <select name="gender" defaultValue={initialData?.gender || ""} required className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-gold/50">
+              <select name="gender" value={gender} onChange={(e) => setGender(e.target.value as Gender)} required className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-gold/50">
                 <option value="">Pilih</option>
                 <option value={Gender.MALE}>Laki-laki</option>
                 <option value={Gender.FEMALE}>Perempuan</option>

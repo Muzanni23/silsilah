@@ -51,7 +51,7 @@ export default function DasborPage() {
   const myApproved = mySubs.filter((s) => s.status === DataStatus.APPROVED).length;
 
   // Check if user needs activation
-  const needsActivation = currentUser && (currentUser as any).status !== "ACTIVE";
+  const needsActivation = currentUser && currentUser.status !== "ACTIVE";
 
   return (
     <div className="max-w-4xl animate-fade-in">
@@ -63,7 +63,7 @@ export default function DasborPage() {
             <div className="flex-1">
               <h3 className="text-sm font-bold text-amber-500 mb-1">Akun Belum Diaktifkan</h3>
               <p className="text-xs text-muted mb-3">
-                Akun Anda berstatus <span className="font-semibold text-amber-400">{(currentUser as any).status}</span>. 
+                Akun Anda berstatus <span className="font-semibold text-amber-400">{currentUser.status}</span>. 
                 Anda tidak dapat mengedit data atau mengelola anggota sampai akun diaktifkan.
                 {" "}Jika Anda adalah admin pertama, klik tombol di bawah untuk mengaktifkan akun secara otomatis.
               </p>

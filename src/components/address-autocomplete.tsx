@@ -183,6 +183,7 @@ export default function AddressAutocomplete({
       const initKab = initialAddress?.kabupaten || "";
       const initProv = initialAddress?.provinsi || "";
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setJalan(initJ);
       setKelurahan(initKel);
       setKecamatan(initKec);

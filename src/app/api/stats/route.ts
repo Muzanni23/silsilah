@@ -34,9 +34,55 @@ export async function GET(req: NextRequest) {
       where: { status: "APPROVED", familyBranch: { not: null } }
     });
     
-    const generationsGroup = await prisma.person.groupBy({
+    const generationsGroup = (await prisma.person.groupBy({
       by: ['generationNumber'],
-      where: { status: "APPROVED", generationNumber: { not: null } }
+      _count: { id: true },
+      where: { status: "APPROVED", generationNumber: { not: null } },
+      orderBy: { generationNumber: 'asc' }
+    })) as any[];
+
+    const generationStats = generationsGroup.map(g => ({
+      generation: g.generationNumber,
+      count: g._count.id
+    }));
+
+    // Hitung 5 kota teratas domisili (hanya untuk anggota hidup)
+    const citiesGroup = (await prisma.person.groupBy({
+      by: ['kabupaten'],
+      _count: { id: true },
+      where: { 
+        status: "APPROVED", 
+        isAlive: true,
+        kabupaten: { not: null, notIn: [""] }
+      },
+      orderBy: {
+        _count: { id: 'desc' }
+      },
+      take: 5
+    })) as any[];
+
+    const cityStats = citiesGroup.map(c => ({
+      city: c.kabupaten,
+      count: c._count.id
+    }));
+
+    // Hitung pertumbuhan data bulanan tahun berjalan
+    const currentYear = new Date().getFullYear();
+    const personsForGrowth = await prisma.person.findMany({
+      where: {
+        status: "APPROVED",
+        createdAt: {
+          gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+          lte: new Date(`${currentYear}-12-31T23:59:59.999Z`),
+        }
+      },
+      select: { createdAt: true }
+    });
+
+    const growthStats = Array(12).fill(0);
+    personsForGrowth.forEach(p => {
+      const month = new Date(p.createdAt).getMonth();
+      growthStats[month]++;
     });
 
     const branches = branchesGroup.map(b => b.familyBranch).filter(Boolean) as string[];
@@ -52,6 +98,9 @@ export async function GET(req: NextRequest) {
       totalGenerations: generationsGroup.length,
       totalBranches: branches.length,
       branches,
+      generationStats,
+      cityStats,
+      growthStats,
     });
   } catch (e) {
     console.error("Stats error:", e);

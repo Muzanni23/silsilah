@@ -18,6 +18,7 @@ export default function ProfilPage() {
     if (search.length > 2) {
       fetchPersons({ search }).then(setPersons);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPersons([]);
     }
   }, [search]);
@@ -39,8 +40,8 @@ export default function ProfilPage() {
       } else {
         alert("Gagal mengklaim profil.");
       }
-    } catch (e: any) {
-      alert("Error: " + e.message);
+    } catch (e) {
+      alert("Error: " + (e as Error).message);
     } finally {
       setClaimingId(null);
     }

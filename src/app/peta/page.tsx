@@ -14,5 +14,5 @@ export default async function PetaPage() {
     updatedAt: p.updatedAt.toISOString(),
   }));
 
-  return <PetaClient persons={serializedPersons as any} />;
+  return <PetaClient persons={serializedPersons as unknown as Person[]} />;
 }

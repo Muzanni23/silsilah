@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import TreeClient from "./tree-client";
+import { Person, Marriage } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +23,5 @@ export default async function PohonPage() {
     createdAt: m.createdAt.toISOString(),
   }));
 
-  return <TreeClient initialPersons={serializedPersons as any} initialMarriages={serializedMarriages as any} />;
+  return <TreeClient initialPersons={serializedPersons as unknown as Person[]} initialMarriages={serializedMarriages as unknown as Marriage[]} />;
 }
