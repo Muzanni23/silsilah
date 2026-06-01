@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Next.js 16: proxy.ts replaces middleware.ts
-export function proxy(request: NextRequest) {
+// Next.js Standard Middleware
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Ambil session token dari cookie Better Auth
-  const sessionToken = request.cookies.get("better-auth.session_token")?.value;
+  // Ambil session token dari cookie Better Auth (dukungan HTTP & HTTPS)
+  const sessionToken = request.cookies.get("better-auth.session_token")?.value ||
+                       request.cookies.get("__secure-better-auth.session_token")?.value;
   const isLoggedIn = !!sessionToken;
 
   // Protected routes: member area, pohon silsilah, and peta lokasi
